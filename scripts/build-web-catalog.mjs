@@ -144,6 +144,9 @@ function inferCollections(title, categoryName, tagNames, type) {
 
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, "chunks"), { recursive: true });
+await fs.mkdir(path.join(OUT, "categories"), { recursive: true });
+await fs.mkdir(path.join(OUT, "tags"), { recursive: true });
+await fs.mkdir(path.join(OUT, "search"), { recursive: true });
 
 let sourceGames = [];
 try {
@@ -252,20 +255,61 @@ const homeCatalog = {
     slug: collection.slug,
     name: collection.name,
     count: countsByCategory[collection.slug] || 0,
-    items: index.filter((game) => game.collections.includes(collection.slug)).slice(0, 48),
+    items: index.filter((game) => game.collections.includes(collection.slug)).slice(0, 14),
   })).filter((shelf) => shelf.items.length > 0),
   raw: [...categories.values()]
     .map((category) => ({
       slug: category.slug,
       name: category.name,
       count: countsByRawCategory[category.slug] || 0,
-      items: index.filter((game) => game.category === category.slug).slice(0, 48),
+      items: index.filter((game) => game.category === category.slug).slice(0, 14),
     }))
     .filter((shelf) => shelf.items.length > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
 };
 
 await fs.writeFile(path.join(OUT, "home.json"), JSON.stringify(homeCatalog));
+
+// Per-category and per-tag files keep homepage/listing navigation fast without
+// downloading the entire 38k-game index.
+for (const collection of curatedCollections) {
+  const items = index.filter((game) => game.collections.includes(collection.slug));
+  await fs.writeFile(path.join(OUT, "categories", `${collection.slug}.json`), JSON.stringify(items));
+}
+for (const category of categories.values()) {
+  const items = index.filter((game) => game.category === category.slug);
+  await fs.writeFile(path.join(OUT, "categories", `${category.slug}.json`), JSON.stringify(items));
+}
+for (const tag of tags.values()) {
+  const items = index.filter((game) => game.tags.includes(tag.slug));
+  await fs.writeFile(path.join(OUT, "tags", `${tag.slug}.json`), JSON.stringify(items));
+}
+
+// Lightweight search shards. A game is added only to buckets matching the
+// first letter of its searchable tokens, so a query downloads a small shard
+// instead of the entire catalog.
+const searchBuckets = new Map();
+for (const game of index) {
+  const searchable = [
+    game.title,
+    game.category,
+    ...game.collections,
+    ...game.tags,
+  ].join(" ").toLowerCase();
+  const tokenStarts = new Set(
+    searchable.split(/[^a-z0-9]+/).filter(Boolean).map((token) => token[0])
+  );
+  if (tokenStarts.size === 0) tokenStarts.add("_");
+  const entry = [game.slug, game.title, game.image, searchable, game.isNew ? 1 : 0];
+  for (const key of tokenStarts) {
+    const bucket = /^[a-z0-9]$/.test(key) ? key : "_";
+    if (!searchBuckets.has(bucket)) searchBuckets.set(bucket, []);
+    searchBuckets.get(bucket).push(entry);
+  }
+}
+for (const [bucket, entries] of searchBuckets) {
+  await fs.writeFile(path.join(OUT, "search", `${bucket}.json`), JSON.stringify(entries));
+}
 
 await fs.writeFile(path.join(OUT, "index.json"), JSON.stringify(index));
 await fs.writeFile(path.join(OUT, "meta.json"), JSON.stringify(meta));
