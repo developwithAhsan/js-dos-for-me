@@ -90,7 +90,7 @@ function inferredTags(title, categoryName, rawTags, type) {
 
   const categoryBase = clean(categoryName).replace(/\s+Games$/i, "");
   if (categoryBase) names.add(categoryBase);
-  names.add(type && String(type).toLowerCase().includes("html") ? "HTML5" : "Browser Game");
+  names.add("Browser Game");
   names.add("Online Game");
 
   const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`.toLowerCase();
@@ -157,7 +157,7 @@ let sourceGames = [];
 try {
   sourceGames = await fetchGames();
 } catch (error) {
-  console.warn("Unable to refresh GameMonetize catalog. Building with an empty HTML5 catalog.", error?.message || error);
+  console.warn("Unable to refresh browser game catalog. Building with an empty catalog.", error?.message || error);
 }
 
 const used = new Set();
