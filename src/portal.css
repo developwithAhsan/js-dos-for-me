@@ -2950,3 +2950,27 @@ body {
     grid-row:1 / 3;
   }
 }
+
+
+/* PlayZone brand assets */
+.brand-mark {
+  overflow:hidden;
+  background:#08111f;
+}
+.brand-mark img {
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+}
+.brand-word strong {
+  color:var(--text);
+}
+.brand-word em {
+  color:#3b82f6;
+  font-weight:900;
+}
+.footer-brand .brand-mark img {
+  width:100%;
+  height:100%;
+}
