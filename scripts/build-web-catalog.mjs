@@ -97,6 +97,7 @@ function inferredTags(title, categoryName, rawTags, type) {
 }
 
 const curatedCollections = [
+  { slug: "new-games", name: "New Games", description: "The newest games recently added to the browser catalog." },
   { slug: "driving-racing", name: "Driving & Racing", description: "Cars, bikes, drifting, parking and racing games." },
   { slug: "multiplayer", name: "Multiplayer", description: "Online, local and competitive multiplayer games." },
   { slug: "arcade-classic", name: "Arcade & Classic", description: "Fast arcade action, retro-inspired and classic browser games." },
@@ -184,6 +185,7 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
   });
 
   const collections = inferCollections(title, categoryName, inferred, item.type || item.game_type || "html5");
+  if (sourceIndex < 700) collections.unshift("new-games");
 
   const record = {
     id: String(item.id || item.catalog_id || slug),
