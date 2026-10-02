@@ -82,10 +82,13 @@ function go(path: string) {
 }
 
 function bucketFor(slug: string) {
-  const value = String(slug || "").toLowerCase();
-  const first = /^[a-z0-9]$/.test(value[0] || "") ? value[0] : "_";
-  const second = /^[a-z0-9]$/.test(value[1] || "") ? value[1] : "_";
-  return first + second;
+  let hash = 2166136261;
+  const value = String(slug || "");
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0 & 255).toString(16).padStart(2, "0");
 }
 
 function nativeCategories(game: Game) {
