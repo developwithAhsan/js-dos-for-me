@@ -345,7 +345,7 @@ function CategoryShelf({ title, slug, count, items, tone }: {
 
   return <section class="category-shelf">
     <button
-      class={`category-banner category-tone-${tone % 13}`}
+      class={`category-banner category-tone-${tone % 20}`}
       onClick={() => go(`/category/${slug}/`)}
       style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,32,.96) 0%, rgba(8,15,32,.70) 44%, rgba(8,15,32,.04) 100%), url("${backdrop}")` }}
     >
