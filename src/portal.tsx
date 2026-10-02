@@ -175,10 +175,15 @@ function loadTagGames(slug: string): Promise<WebIndexGame[]> {
   return tagPromises.get(slug)!;
 }
 
+const SEARCH_STOPWORDS = new Set(["game", "games", "online", "html5", "browser", "play", "free"]);
+
 async function loadSearchGames(query: string): Promise<WebIndexGame[]> {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return [];
-  const first = normalized.match(/[a-z0-9]/)?.[0] || "_";
+  const meaningful = normalized
+    .split(/[^a-z0-9]+/)
+    .find((token) => token.length > 1 && !SEARCH_STOPWORDS.has(token));
+  const first = meaningful?.[0] || normalized.match(/[a-z0-9]/)?.[0] || "_";
   if (!searchPromises.has(first)) {
     searchPromises.set(first, fetchJson<SearchEntry[]>(`/catalog/search/${first}.json`, []));
   }
