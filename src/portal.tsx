@@ -92,7 +92,10 @@ function bucketFor(slug: string) {
 }
 
 function nativeCategories(game: Game) {
-  return game.categories?.length ? game.categories : [game.platform === "Browser" ? "Browser-Native Games" : "DOS Classics"];
+  const specific = game.categories?.length
+    ? game.categories
+    : [game.platform === "Browser" ? "Browser-Native Games" : "DOS Classics"];
+  return ["PC & Browser Classics", ...specific];
 }
 
 function nativeTags(game: Game) {
@@ -379,7 +382,7 @@ function ShelfGameCard({ game, priority = false }: { game: WebIndexGame; priorit
 function NativeShelfCard({ game }: { game: Game }) {
   return <article class="shelf-game-card native-shelf-card" onClick={() => go(`/games/${game.slug}/`)}>
     {game.image
-      ? <img src={game.image} alt={`${game.title} browser game`} loading="lazy" />
+      ? <img src={game.image} alt={`${game.title} gameplay thumbnail`} loading="eager" decoding="async" />
       : <div class="native-shelf-art"><small>{game.platform}</small><strong>{game.title}</strong></div>}
     <FavoriteButton slug={game.slug} compact />
     <div class="shelf-hover">
@@ -480,7 +483,7 @@ function NativeShelf() {
     if (!track) return;
     const maxLeft = track.scrollWidth - track.clientWidth;
     if (track.scrollLeft >= maxLeft - 20) {
-      go("/category/browser-native-games/");
+      go("/category/pc-browser-classics/");
       return;
     }
     track.scrollBy({ left: Math.max(520, track.clientWidth * 0.86), behavior: "smooth" });
@@ -497,7 +500,7 @@ function NativeShelf() {
       <div class="shelf-track" ref={trackRef}>
         {games.map((game) => <NativeShelfCard game={game} />)}
       </div>
-      <button class="shelf-next" onClick={scrollMore} aria-label="Show more browser classics" title="More browser classics">›</button>
+      <button class="shelf-next" onClick={scrollMore} aria-label="Show more PC and browser classics" title="More PC & Browser Classics">›</button>
     </div>
   </section>;
 }
@@ -595,16 +598,11 @@ function Home({ query }: { query: string }) {
     </div>
 
     <div class="shelves-list">
-      {featuredTaxonomy.slice(0, 5).map((item, i) => {
-        const shelf = featuredMap.get(item.slug);
-        return shelf ? <CategoryShelf title={item.label} slug={item.slug} count={shelf.count} items={shelf.items} tone={i} /> : null;
-      })}
-
       <NativeShelf />
 
-      {featuredTaxonomy.slice(5).map((item, i) => {
+      {featuredTaxonomy.map((item, i) => {
         const shelf = featuredMap.get(item.slug);
-        return shelf ? <CategoryShelf title={item.label} slug={item.slug} count={shelf.count} items={shelf.items} tone={i + 5} /> : null;
+        return shelf ? <CategoryShelf title={item.label} slug={item.slug} count={shelf.count} items={shelf.items} tone={i} /> : null;
       })}
     </div>
 
@@ -1260,7 +1258,7 @@ function App() {
           <button onClick={() => go("/category/arcade-classic/")}>Arcade & Classic</button>
           <button onClick={() => go("/category/board-puzzle/")}>Board & Puzzle</button>
           <button onClick={() => go("/category/adventure-rpg/")}>Adventure & RPG</button>
-          <button onClick={() => go("/category/browser-native-games/")}>PC & Browser Classics</button>
+          <button onClick={() => go("/category/pc-browser-classics/")}>PC & Browser Classics</button>
         </div>
 
         <div class="footer-link-column">
