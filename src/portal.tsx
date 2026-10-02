@@ -528,7 +528,7 @@ function Home({ query }: { query: string }) {
       if (active) setHome(data);
     });
     updateSeo(
-      "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
+      "PlayZone — Free Online Games",
       "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
       "/"
     );
@@ -951,7 +951,6 @@ function WebGamePage({ slug }: { slug: string }) {
   if (!game) return <main class="play-page"><div class="play-shell game-loading-shell"><GameSidebar /><section class="play-main"><div class="play-stage game-stage-skeleton" /></section></div></main>;
 
   const displayTags = [
-    "HTML5",
     "Browser Game",
     ...game.tags.map((tag) => tag.replace(/-/g, " ")),
     ...game.collections.map((tag) => tag.replace(/-/g, " "))
@@ -981,7 +980,7 @@ function WebGamePage({ slug }: { slug: string }) {
           <p>{game.description}</p>
           <div class="detail-mini-grid">
             <div><strong>Category</strong><span>{game.category.replace(/-/g, " ")}</span></div>
-            <div><strong>Game type</strong><span>{game.type || "HTML5"}</span></div>
+            <div><strong>Game type</strong><span>Browser Game</span></div>
             <div><strong>How to play</strong><span>{game.instructions}</span></div>
           </div>
         </section>
@@ -1059,7 +1058,7 @@ function FavoritesPage() {
   const [index, setIndex] = useState<WebIndexGame[]>([]);
   useEffect(() => {
     loadCatalogIndex().then(setIndex);
-    updateSeo("Favorite Games — DOS Arcade", "Your favorite browser games saved on this device.", "/favorites/");
+    updateSeo("Favorite Games — PlayZone", "Your favorite browser games saved on this device.", "/favorites/");
   }, []);
   const native = games.filter((game) => favorites.has(game.slug));
   const web = index.filter((game) => favorites.has(game.slug));
@@ -1184,9 +1183,9 @@ function App() {
       <div class="portal-shell screenshot-nav">
         <button class="hamburger-button" onClick={openCategories} aria-label="Browse categories" title="Browse categories">☰</button>
 
-        <button class="brand compact-brand" onClick={() => go("/")} aria-label="DOS Arcade home">
-          <span class="brand-mark"><span class="brand-core">DA</span><span class="brand-pulse" /></span>
-          <span class="brand-word"><strong>DOS</strong><em>Arcade</em></span>
+        <button class="brand compact-brand" onClick={() => go("/")} aria-label="PlayZone home">
+          <span class="brand-mark"><img src="/favicon.svg" alt="" /><span class="brand-pulse" /></span>
+          <span class="brand-word"><strong>Play</strong><em>Zone</em></span>
         </button>
 
         <nav class="header-quick-links" aria-label="Quick game categories">
@@ -1233,11 +1232,11 @@ function App() {
     <footer class="site-footer">
       <div class="portal-shell footer-main">
         <div class="footer-brand-column">
-          <button class="footer-brand" onClick={() => go("/")} aria-label="DOS Arcade home">
-            <span class="brand-mark"><span class="brand-core">DA</span></span>
-            <span><strong>DOS Arcade</strong><small>Instant browser gaming</small></span>
+          <button class="footer-brand" onClick={() => go("/")} aria-label="PlayZone home">
+            <span class="brand-mark"><img src="/favicon.svg" alt="" /></span>
+            <span><strong>PlayZone</strong><small>Free online games</small></span>
           </button>
-          <p>Play HTML5 games, DOS classics and browser-native PC games from one fast, mobile-friendly arcade.</p>
+          <p>Play thousands of free browser games, PC classics and browser-native favorites from one fast, mobile-friendly arcade.</p>
           <div class="footer-badges">
             <span>38K+ Games</span>
             <span>Mobile Ready</span>
@@ -1272,8 +1271,8 @@ function App() {
 
       <div class="footer-bottom">
         <div class="portal-shell footer-bottom-inner">
-          <span>© 2026 DOS Arcade</span>
-          <span>Browser · HTML5 · DOS · WebAssembly</span>
+          <span>© 2026 PlayZone</span>
+          <span>Browser Games · PC Classics · WebAssembly</span>
           <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Back to top ↑</button>
         </div>
       </div>
