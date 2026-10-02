@@ -196,9 +196,8 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     category: categorySlug,
     collections,
     tags: gameTags,
-    isNew: sourceIndex < 700,
     type: clean(item.type || item.game_type || "html5").toLowerCase(),
-    isNew: sourceIndex < 120,
+    isNew: sourceIndex < 180,
     width: Number(item.width || item.w || 800) || 800,
     height: Number(item.height || item.h || 600) || 600,
   };
@@ -212,7 +211,6 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     tags: record.tags,
     isNew: record.isNew,
     type: record.type,
-    isNew: record.isNew,
   });
 }
 
