@@ -1,17 +1,17 @@
 {
-  "name": "DOS Arcade",
-  "short_name": "DOS Arcade",
-  "description": "Play DOS classics, HTML5 and browser-native games in a fast responsive arcade portal.",
+  "name": "PlayZone — Free Online Games",
+  "short_name": "PlayZone",
+  "description": "Play thousands of free browser games, multiplayer favorites and PC classics instantly with no download required.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07090d",
-  "theme_color": "#7c5cff",
+  "theme_color": "#2563eb",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
