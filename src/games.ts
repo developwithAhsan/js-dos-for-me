@@ -13,6 +13,11 @@ export type Game = {
   bundleUrl?: string;
   demoZipUrl?: string;
   command?: string;
+  externalUrl?: string;
+  engine?: "jsdos" | "external";
+  categories?: string[];
+  tags?: string[];
+  image?: string;
   availability: GameAvailability;
   badge?: string;
   sourceLabel?: string;
@@ -126,6 +131,38 @@ export const games: Game[] = [
     availability: "playable",
     badge: "Playable now",
     sourceLabel: "Tyrian 2000 freeware bundle"
+  },
+  {
+    slug: "gta-iii-browser",
+    title: "GTA III Browser",
+    year: 2001,
+    developer: "Browser port",
+    genres: ["Open World", "Action", "3D"],
+    platform: "Browser",
+    description: "A browser-native 3D game experience running through a dedicated web port.",
+    controls: "Keyboard, mouse and the touch controls provided by the browser port.",
+    externalUrl: "https://gta3browser.vercel.app/",
+    engine: "external",
+    categories: ["Browser-Native Games", "Open-World 3D Classics"],
+    tags: ["3D", "Open World", "Browser-Native"],
+    availability: "playable",
+    badge: "Browser-native"
+  },
+  {
+    slug: "gta-vice-city-browser",
+    title: "GTA Vice City Browser",
+    year: 2002,
+    developer: "Browser port",
+    genres: ["Open World", "Action", "3D"],
+    platform: "Browser",
+    description: "A browser-native 3D game experience running through a dedicated web port.",
+    controls: "Keyboard, mouse and the touch controls provided by the browser port.",
+    externalUrl: "https://vicecityonline.vercel.app/",
+    engine: "external",
+    categories: ["Browser-Native Games", "Open-World 3D Classics"],
+    tags: ["3D", "Open World", "Browser-Native"],
+    availability: "playable",
+    badge: "Browser-native"
   }
 ];
 
