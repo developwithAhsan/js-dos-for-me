@@ -155,7 +155,7 @@ const tags = new Map();
 const full = [];
 const index = [];
 
-for (const item of sourceGames) {
+for (const [sourceIndex, item] of sourceGames.entries()) {
   const title = clean(item.title || item.name);
   const gameUrl = String(item.url || item.file || "").trim();
   const image = String(item.thumb || item.image || item.thumbnail || "").trim();
@@ -195,6 +195,7 @@ for (const item of sourceGames) {
     collections,
     tags: gameTags,
     type: clean(item.type || item.game_type || "html5").toLowerCase(),
+    isNew: sourceIndex < 120,
     width: Number(item.width || item.w || 800) || 800,
     height: Number(item.height || item.h || 600) || 600,
   };
@@ -207,6 +208,7 @@ for (const item of sourceGames) {
     collections: record.collections,
     tags: record.tags,
     type: record.type,
+    isNew: record.isNew,
   });
 }
 
