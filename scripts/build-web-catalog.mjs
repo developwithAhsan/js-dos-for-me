@@ -352,6 +352,7 @@ const urls = [
   ...full.map((game) => `${SITE}/games/${game.slug}/`),
   ...nativeCategoryUrls.map((slug) => `${SITE}/category/${slug}/`),
   ...meta.categories.map((category) => `${SITE}/category/${category.slug}/`),
+  ...meta.rawCategories.map((category) => `${SITE}/category/${category.slug}/`),
   ...nativeTagUrls.map((slug) => `${SITE}/tag/${slug}/`),
   ...meta.tags.map((tag) => `${SITE}/tag/${tag.slug}/`),
 ];
