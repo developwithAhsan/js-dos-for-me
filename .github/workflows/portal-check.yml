@@ -1,0 +1,22 @@
+name: Portal Check
+
+on:
+  push:
+    branches: [portal-v1]
+  pull_request:
+    branches: [8.xx]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm install -g yarn
+      - run: yarn
+      - run: yarn run eslint src --ext ts,tsx --max-warnings 0
+      - run: mkdir -p public/emulators && cp -rv node_modules/emulators/dist/* public/emulators
+      - run: yarn run build
