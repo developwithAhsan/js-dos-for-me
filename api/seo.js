@@ -30,7 +30,8 @@ function shell({ title, description, canonical, image, schema }) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#06080d" />
+  <meta name="theme-color" content="#07090d" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
   <meta name="description" content="${esc(description)}" />
   <meta name="robots" content="index,follow,max-image-preview:large" />
   <link rel="canonical" href="${esc(canonical)}" />
@@ -40,7 +41,7 @@ function shell({ title, description, canonical, image, schema }) {
   <meta property="og:url" content="${esc(canonical)}" />
   ${socialImage}
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n  <link rel="manifest" href="/site.webmanifest" />
   <script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script>
   <title>${esc(title)}</title>
   <script type="module" crossorigin src="/js-dos.js"></script>
