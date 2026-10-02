@@ -197,10 +197,26 @@ const nativeSlugs = [
   "duke-nukem-3d", "simcity", "prince-of-persia", "tyrian-2000",
   "gta-iii-browser", "gta-vice-city-browser"
 ];
+const nativeCategoryUrls = [
+  "browser-native-games",
+  "open-world-3d-classics",
+  "dos-classics",
+];
+const nativeTagUrls = [
+  "3d",
+  "open-world",
+  "browser-native",
+  "action",
+  "racing",
+  "fps",
+  "arcade",
+];
 const urls = [
   ...nativeSlugs.map((slug) => `${SITE}/games/${slug}/`),
   ...full.map((game) => `${SITE}/games/${game.slug}/`),
+  ...nativeCategoryUrls.map((slug) => `${SITE}/category/${slug}/`),
   ...meta.categories.map((category) => `${SITE}/category/${category.slug}/`),
+  ...nativeTagUrls.map((slug) => `${SITE}/tag/${slug}/`),
   ...meta.tags.map((tag) => `${SITE}/tag/${tag.slug}/`),
 ];
 const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) =>
