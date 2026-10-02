@@ -183,11 +183,12 @@ async function loadSearchGames(query: string): Promise<WebIndexGame[]> {
   const meaningful = normalized
     .split(/[^a-z0-9]+/)
     .find((token) => token.length > 1 && !SEARCH_STOPWORDS.has(token));
-  const first = meaningful?.[0] || normalized.match(/[a-z0-9]/)?.[0] || "_";
-  if (!searchPromises.has(first)) {
-    searchPromises.set(first, fetchJson<SearchEntry[]>(`/catalog/search/${first}.json`, []));
+  if (!meaningful || meaningful.length < 2) return [];
+  const shard = meaningful.slice(0, 2);
+  if (!searchPromises.has(shard)) {
+    searchPromises.set(shard, fetchJson<SearchEntry[]>(`/catalog/search/${shard}.json`, []));
   }
-  const entries = await searchPromises.get(first)!;
+  const entries = await searchPromises.get(shard)!;
   return entries
     .filter((entry) => entry[3].includes(normalized))
     .slice(0, 500)
@@ -549,13 +550,18 @@ function Home({ query }: { query: string }) {
     setSearchLoading(true);
 
     let cancelled = false;
+    if (search.replace(/[^a-z0-9]/g, "").length < 2) {
+      setSearchLoading(false);
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       loadSearchGames(search).then((results) => {
         if (!cancelled) setSearchResults(results);
       }).finally(() => {
         if (!cancelled) setSearchLoading(false);
       });
-    }, 120);
+    }, 100);
 
     return () => {
       cancelled = true;
