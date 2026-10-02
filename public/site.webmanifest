@@ -1,0 +1,9 @@
+{
+  "name": "DOS Arcade",
+  "short_name": "DOS Arcade",
+  "description": "Play classic DOS games in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06080d",
+  "theme_color": "#06080d"
+}
