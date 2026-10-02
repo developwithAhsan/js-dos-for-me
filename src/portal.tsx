@@ -266,7 +266,7 @@ function NativeCard({ game }: { game: Game }) {
 function WebCard({ game }: { game: WebIndexGame }) {
   return <article class="game-card" onClick={() => go(`/games/${game.slug}/`)}>
     <div class="thumb-wrap">
-      <img class="game-thumb" src={game.image} alt={`${game.title} online game thumbnail`} loading="lazy" referrerPolicy="no-referrer" />
+      <img class="game-thumb" src={game.image} alt={`${game.title} online game thumbnail`} loading="lazy" />
       <FavoriteButton slug={game.slug} compact />
     </div>
     <div class="game-card-body">
@@ -588,7 +588,7 @@ function WebGamePage({ slug }: { slug: string }) {
         </div>
       </section>
       <aside class="info-card">
-        <img class="game-thumb detail-thumb" src={game.image} alt={`${game.title} game thumbnail`} referrerPolicy="no-referrer" />
+        <img class="game-thumb detail-thumb" src={game.image} alt={`${game.title} game thumbnail`} />
         <p>{game.description}</p>
         <div class="info-row"><strong>Category</strong>{game.category.replace(/-/g, " ")}</div>
         <div class="info-row"><strong>Game type</strong>{game.type || "HTML5"}</div>
