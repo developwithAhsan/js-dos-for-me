@@ -7,7 +7,7 @@ export type Game = {
   year: number;
   developer: string;
   genres: string[];
-  platform: "MS-DOS" | "Windows 9x";
+  platform: "MS-DOS" | "Windows 9x" | "Browser";
   description: string;
   controls: string;
   bundleUrl?: string;
