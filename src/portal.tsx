@@ -183,8 +183,8 @@ async function loadSearchGames(query: string): Promise<WebIndexGame[]> {
   const meaningful = normalized
     .split(/[^a-z0-9]+/)
     .find((token) => token.length > 1 && !SEARCH_STOPWORDS.has(token));
-  if (!meaningful || meaningful.length < 2) return [];
-  const shard = meaningful.slice(0, 2);
+  if (!meaningful || meaningful.length < 3) return [];
+  const shard = meaningful.slice(0, 3);
   if (!searchPromises.has(shard)) {
     searchPromises.set(shard, fetchJson<SearchEntry[]>(`/catalog/search/${shard}.json`, []));
   }
@@ -550,7 +550,7 @@ function Home({ query }: { query: string }) {
     setSearchLoading(true);
 
     let cancelled = false;
-    if (search.replace(/[^a-z0-9]/g, "").length < 2) {
+    if (search.replace(/[^a-z0-9]/g, "").length < 3) {
       setSearchLoading(false);
       return;
     }
