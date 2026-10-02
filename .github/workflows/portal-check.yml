@@ -2,7 +2,7 @@ name: Portal Check
 
 on:
   push:
-    branches: [portal-v1]
+    branches: [portal-v1, 8.xx]
   pull_request:
     branches: [8.xx]
 
