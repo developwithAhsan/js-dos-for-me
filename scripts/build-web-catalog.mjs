@@ -290,6 +290,7 @@ for (const tag of tags.values()) {
 // Lightweight search shards. A game is added only to buckets matching the
 // first letter of its searchable tokens, so a query downloads a small shard
 // instead of the entire catalog.
+const searchStopwords = new Set(["game", "games", "online", "html5", "browser", "play", "free"]);
 const searchBuckets = new Map();
 for (const game of index) {
   const searchable = [
@@ -299,7 +300,10 @@ for (const game of index) {
     ...game.tags,
   ].join(" ").toLowerCase();
   const tokenStarts = new Set(
-    searchable.split(/[^a-z0-9]+/).filter(Boolean).map((token) => token[0])
+    searchable
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length > 1 && !searchStopwords.has(token))
+      .map((token) => token[0])
   );
   if (tokenStarts.size === 0) tokenStarts.add("_");
   const entry = [game.slug, game.title, game.image, searchable, game.isNew ? 1 : 0];
