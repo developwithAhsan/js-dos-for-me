@@ -96,6 +96,49 @@ function inferredTags(title, categoryName, rawTags, type) {
   return [...names].slice(0, 10);
 }
 
+const curatedCollections = [
+  { slug: "driving-racing", name: "Driving & Racing", description: "Cars, bikes, drifting, parking and racing games." },
+  { slug: "multiplayer", name: "Multiplayer", description: "Online, local and competitive multiplayer games." },
+  { slug: "arcade-classic", name: "Arcade & Classic", description: "Fast arcade action, retro-inspired and classic browser games." },
+  { slug: "board-puzzle", name: "Board & Puzzle", description: "Puzzle, board, card, chess, mahjong and thinking games." },
+  { slug: "shooting", name: "Shooting", description: "FPS, sniper, battle, zombie and action shooting games." },
+  { slug: "sports", name: "Sports", description: "Football, basketball, tennis, cricket, golf and more." },
+  { slug: "adventure-rpg", name: "Adventure & RPG", description: "Adventure, exploration, quest, escape and role-playing games." },
+  { slug: "strategy-defense", name: "Strategy & Defense", description: "Strategy, tower defense, tactical and planning games." },
+  { slug: "kids-educational", name: "Kids & Educational", description: "Coloring, learning, family-friendly and kids games." },
+  { slug: "management-simulation", name: "Management & Simulation", description: "Tycoon, idle, simulator, cooking and management games." },
+  { slug: "girls-lifestyle", name: "Girls & Lifestyle", description: "Fashion, dress-up, makeover, cooking and lifestyle games." },
+  { slug: "fun-crazy", name: "Fun & Crazy", description: "Funny, unusual, casual and surprising browser games." },
+];
+
+function inferCollections(title, categoryName, tagNames, type) {
+  const text = `${title} ${categoryName} ${tagNames.join(" ")} ${type || ""}`.toLowerCase();
+  const found = new Set();
+  const has = (...words) => words.some((word) => text.includes(word));
+
+  if (has("racing", "race", "car", "drift", "parking", "bike", "moto", "truck", "drive")) found.add("driving-racing");
+  if (has("multiplayer", "2 player", "two player", "3 player", "io", "online pvp", "battle royale")) found.add("multiplayer");
+  if (has("arcade", "classic", "retro", "runner", "platform", "jump", "snake", "tetris")) found.add("arcade-classic");
+  if (has("puzzle", "board", "card", "chess", "mahjong", "solitaire", "match", "brain", "thinking", "word")) found.add("board-puzzle");
+  if (has("shoot", "gun", "sniper", "fps", "zombie", "war", "tank", "army", "battle")) found.add("shooting");
+  if (has("sport", "football", "soccer", "basket", "tennis", "cricket", "golf", "baseball", "bowling")) found.add("sports");
+  if (has("adventure", "rpg", "quest", "escape", "survival", "explore", "hero", "dungeon")) found.add("adventure-rpg");
+  if (has("strategy", "defense", "tower", "tactical", "war", "kingdom")) found.add("strategy-defense");
+  if (has("kids", "baby", "coloring", "educational", "school", "learning", "family")) found.add("kids-educational");
+  if (has("simulator", "simulation", "tycoon", "idle", "management", "restaurant", "cooking", "farm", "shop")) found.add("management-simulation");
+  if (has("girl", "dress", "makeup", "fashion", "makeover", "princess", "beauty", "wedding", "cooking")) found.add("girls-lifestyle");
+  if (has("fun", "funny", "crazy", "casual", "prank", "silly", "brainrot")) found.add("fun-crazy");
+
+  if (found.size === 0) {
+    if (categoryName.toLowerCase().includes("puzzle")) found.add("board-puzzle");
+    else if (categoryName.toLowerCase().includes("sports")) found.add("sports");
+    else if (categoryName.toLowerCase().includes("action")) found.add("arcade-classic");
+    else if (categoryName.toLowerCase().includes("adventure")) found.add("adventure-rpg");
+    else found.add("arcade-classic");
+  }
+  return [...found];
+}
+
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, "chunks"), { recursive: true });
 
@@ -138,6 +181,8 @@ for (const item of sourceGames) {
     return tagSlug;
   });
 
+  const collections = inferCollections(title, categoryName, inferred, item.type || item.game_type || "html5");
+
   const record = {
     id: String(item.id || item.catalog_id || slug),
     slug,
@@ -147,6 +192,7 @@ for (const item of sourceGames) {
     description: clean(item.description) || `Play ${title} online in your browser.`,
     instructions: clean(item.instructions) || "Use the on-screen or keyboard controls shown by the game.",
     category: categorySlug,
+    collections,
     tags: gameTags,
     type: clean(item.type || item.game_type || "html5").toLowerCase(),
     width: Number(item.width || item.w || 800) || 800,
@@ -158,6 +204,7 @@ for (const item of sourceGames) {
     title: record.title,
     image: record.image,
     category: record.category,
+    collections: record.collections,
     tags: record.tags,
     type: record.type,
   });
@@ -166,15 +213,16 @@ for (const item of sourceGames) {
 const countsByCategory = {};
 const countsByTag = {};
 for (const game of full) {
-  countsByCategory[game.category] = (countsByCategory[game.category] || 0) + 1;
+  for (const collection of game.collections) countsByCategory[collection] = (countsByCategory[collection] || 0) + 1;
   for (const tag of game.tags) countsByTag[tag] = (countsByTag[tag] || 0) + 1;
 }
 
 const meta = {
   generatedAt: new Date().toISOString(),
   count: full.length,
-  categories: [...categories.values()].map((c) => ({ ...c, count: countsByCategory[c.slug] || 0 }))
+  categories: curatedCollections.map((item) => ({ ...item, count: countsByCategory[item.slug] || 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+  rawCategories: [...categories.values()],
   tags: [...tags.values()].map((t) => ({ ...t, count: countsByTag[t.slug] || 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
 };
