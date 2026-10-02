@@ -1121,6 +1121,7 @@ function App() {
   const [route, setRoute] = useState<Route>(routeFromLocation());
   const [accountOpen, setAccountOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; }
   });
@@ -1132,6 +1133,22 @@ function App() {
     };
     addEventListener("popstate", handle);
     return () => removeEventListener("popstate", handle);
+  }, []);
+
+  useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editing = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (event.key === "/" && !editing) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchRef.current) {
+        searchRef.current?.blur();
+      }
+    };
+    addEventListener("keydown", handleSearchShortcut);
+    return () => removeEventListener("keydown", handleSearchShortcut);
   }, []);
 
   const closeAccount = () => {
@@ -1167,24 +1184,40 @@ function App() {
   return <>
     <header class="site-header screenshot-header">
       <div class="portal-shell screenshot-nav">
-        <button class="hamburger-button" onClick={openCategories} aria-label="Browse categories">☰</button>
-        <button class="brand compact-brand" onClick={() => go("/")}>
+        <button class="hamburger-button" onClick={openCategories} aria-label="Browse categories" title="Browse categories">☰</button>
+
+        <button class="brand compact-brand" onClick={() => go("/")} aria-label="DOS Arcade home">
           <span class="brand-mark"><span class="brand-core">DA</span><span class="brand-pulse" /></span>
           <span class="brand-word"><strong>DOS</strong><em>Arcade</em></span>
         </button>
 
+        <nav class="header-quick-links" aria-label="Quick game categories">
+          <button onClick={() => go("/category/new-games/")}>New</button>
+          <button onClick={() => go("/category/driving-racing/")}>Racing</button>
+          <button onClick={() => go("/category/shooting/")}>Shooting</button>
+          <button onClick={() => go("/category/arcade-classic/")}>Arcade</button>
+        </nav>
+
         <label class="top-search">
-          <span>⌕</span>
+          <span class="top-search-icon">⌕</span>
           <input
+            ref={searchRef}
             value={headerQuery}
             onInput={(e) => sendSearch((e.target as HTMLInputElement).value)}
-            placeholder="Search our 38,000+ games"
+            placeholder="Search 38,000+ games"
             aria-label="Search games"
+            autoComplete="off"
+            spellcheck={false}
           />
+          {headerQuery
+            ? <button class="top-search-clear" type="button" onClick={() => sendSearch("")} aria-label="Clear search">×</button>
+            : <kbd class="search-shortcut">/</kbd>}
         </label>
 
-        <button class="top-favorite-button" onClick={() => go("/favorites/")} aria-label="Favorites">♡</button>
-        <button class="profile-avatar" onClick={() => setAccountOpen(true)} aria-label="Account">
+        <button class="top-favorite-button" onClick={() => go("/favorites/")} aria-label="Favorites" title="Favorite games">
+          <span>♡</span>
+        </button>
+        <button class="profile-avatar" onClick={() => setAccountOpen(true)} aria-label="Account" title={profile?.name || "Login / Sign up"}>
           {(profile?.name || "A").slice(0, 1).toUpperCase()}
         </button>
       </div>
@@ -1192,14 +1225,62 @@ function App() {
 
     {content}
 
-    <nav class="mobile-dock">
+    <nav class="mobile-dock" aria-label="Mobile navigation">
       <button onClick={() => go("/")}><span>⌂</span><small>Home</small></button>
       <button onClick={openCategories}><span>▤</span><small>Categories</small></button>
       <button onClick={() => go("/favorites/")}><span>♡</span><small>Favorites</small></button>
       <button onClick={() => setAccountOpen(true)}><span>○</span><small>Profile</small></button>
     </nav>
 
-    <footer class="footer"><div class="portal-shell">DOS Arcade · Browser, HTML5, DOS and browser-native games.</div></footer>
+    <footer class="site-footer">
+      <div class="portal-shell footer-main">
+        <div class="footer-brand-column">
+          <button class="footer-brand" onClick={() => go("/")} aria-label="DOS Arcade home">
+            <span class="brand-mark"><span class="brand-core">DA</span></span>
+            <span><strong>DOS Arcade</strong><small>Instant browser gaming</small></span>
+          </button>
+          <p>Play HTML5 games, DOS classics and browser-native PC games from one fast, mobile-friendly arcade.</p>
+          <div class="footer-badges">
+            <span>38K+ Games</span>
+            <span>Mobile Ready</span>
+            <span>No Database Required</span>
+          </div>
+        </div>
+
+        <div class="footer-link-column">
+          <strong>Popular</strong>
+          <button onClick={() => go("/category/new-games/")}>New Games</button>
+          <button onClick={() => go("/category/driving-racing/")}>Driving & Racing</button>
+          <button onClick={() => go("/category/shooting/")}>Shooting</button>
+          <button onClick={() => go("/category/multiplayer/")}>Multiplayer</button>
+        </div>
+
+        <div class="footer-link-column">
+          <strong>Discover</strong>
+          <button onClick={() => go("/category/arcade-classic/")}>Arcade & Classic</button>
+          <button onClick={() => go("/category/board-puzzle/")}>Board & Puzzle</button>
+          <button onClick={() => go("/category/adventure-rpg/")}>Adventure & RPG</button>
+          <button onClick={() => go("/category/browser-native-games/")}>PC & Browser Classics</button>
+        </div>
+
+        <div class="footer-link-column">
+          <strong>Your Arcade</strong>
+          <button onClick={() => go("/favorites/")}>Favorite Games</button>
+          <button onClick={() => searchRef.current?.focus()}>Search Games</button>
+          <button onClick={openCategories}>Browse Categories</button>
+          <button onClick={() => setAccountOpen(true)}>{profile?.name ? "Device Profile" : "Login / Sign up"}</button>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="portal-shell footer-bottom-inner">
+          <span>© 2026 DOS Arcade</span>
+          <span>Browser · HTML5 · DOS · WebAssembly</span>
+          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Back to top ↑</button>
+        </div>
+      </div>
+    </footer>
+
     {accountOpen && <AccountModal close={closeAccount} />}
   </>;
 }
