@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/thumbs/gta3-gameplay.jpg",
+      "destination": "https://raw.githubusercontent.com/developwithAhsan/gta3-online/main/web/images/about-008.jpg"
+    },
+    {
+      "source": "/thumbs/vc-gameplay.jpg",
+      "destination": "https://raw.githubusercontent.com/developwithAhsan/vc-online/main/d5b37447d1ef23deaa62f117359ac5a5.jpg"
+    },
+    {
       "source": "/thumbs/doom.gif",
       "destination": "https://dosgames.com/screens/doom.gif"
     },
@@ -30,7 +38,7 @@
     },
     {
       "source": "/thumbs/tyrian.gif",
-      "destination": "https://www.dosgames.com/screens/tyrian.gif"
+      "destination": "https://dosgames.com/screens/tyrian.gif"
     },
     {
       "source": "/demos/nfs.zip",
