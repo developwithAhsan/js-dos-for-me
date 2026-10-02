@@ -36,6 +36,7 @@ type CatalogMeta = {
   count: number;
   generatedAt?: string;
   categories: TaxonomyItem[];
+  rawCategories?: TaxonomyItem[];
   tags: TaxonomyItem[];
 };
 
@@ -423,6 +424,11 @@ function Home({ query }: { query: string }) {
 
   const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
   const byCollection = (slug: string, count = 48) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
+  const byRawCategory = (slug: string, count = 48) => index.filter((game) => game.category === slug).slice(0, count);
+  const rawCategories = (meta.rawCategories || [])
+    .map((item) => ({ ...item, count: index.filter((game) => game.category === item.slug).length }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   if (search) {
     return <main class="home-feed portal-shell search-home">
@@ -430,7 +436,7 @@ function Home({ query }: { query: string }) {
         <div><small>Search results</small><h1>{query}</h1></div>
         <span>{filtered.length.toLocaleString()} games</span>
       </div>
-      <div class="game-grid dense-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
+      <div class="search-shelf-grid">{filtered.slice(0, visible).map((game) => <ShelfGameCard game={game} />)}</div>
       {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
     </main>;
   }
@@ -465,14 +471,23 @@ function Home({ query }: { query: string }) {
       )}
     </div>
 
-    <section class="all-games-section">
+    {rawCategories.length > 0 && <section class="all-category-shelves">
       <div class="all-games-head">
-        <div><small>More to play</small><h2>All Games</h2></div>
-        <span>{meta.count.toLocaleString()} total</span>
+        <div><small>Complete directory</small><h2>More Game Categories</h2></div>
+        <span>{rawCategories.length} categories</span>
       </div>
-      <div class="game-grid dense-grid">{index.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
-      {visible < index.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
-    </section>
+      <div class="shelves-list raw-shelves-list">
+        {rawCategories.map((item, i) =>
+          <CategoryShelf
+            title={item.name}
+            slug={item.slug}
+            count={item.count}
+            items={byRawCategory(item.slug)}
+            tone={i + featuredTaxonomy.length}
+          />
+        )}
+      </div>
+    </section>}
   </main>;
 }
 
