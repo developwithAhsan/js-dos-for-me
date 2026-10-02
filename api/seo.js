@@ -8,8 +8,8 @@ const NATIVE = {
   "simcity": { title: "SimCity", description: "SimCity browser game page.", image: "" },
   "prince-of-persia": { title: "Prince of Persia", description: "Prince of Persia browser game page.", image: "" },
   "tyrian-2000": { title: "Tyrian 2000", description: "Play Tyrian 2000 online in your browser.", image: "" },
-  "gta-iii-browser": { title: "GTA III Browser", description: "Browser-native 3D game experience.", image: "" },
-  "gta-vice-city-browser": { title: "GTA Vice City Browser", description: "Browser-native 3D game experience.", image: "" },
+  "gta-iii-browser": { title: "GTA III Browser", description: "Explore a browser-native open-world 3D experience through the dedicated GTA III web port.", image: "https://developwithahsan.github.io/gta3-online/images/blog/play-gta-3-browser.svg" },
+  "gta-vice-city-browser": { title: "GTA Vice City Browser", description: "Play a browser-native Vice City 3D experience through the dedicated web port.", image: "https://vicecityonline.vercel.app/tommy.jpg" },
 };
 
 function esc(value = "") {
