@@ -303,12 +303,12 @@ for (const game of index) {
     searchable
       .split(/[^a-z0-9]+/)
       .filter((token) => token.length > 1 && !searchStopwords.has(token))
-      .map((token) => token.slice(0, 2))
+      .map((token) => token.slice(0, 3))
   );
   if (tokenStarts.size === 0) tokenStarts.add("_");
   const entry = [game.slug, game.title, game.image, searchable, game.isNew ? 1 : 0];
   for (const key of tokenStarts) {
-    const bucket = /^[a-z0-9]{2}$/.test(key) ? key : "_";
+    const bucket = /^[a-z0-9]{3}$/.test(key) ? key : "_";
     if (!searchBuckets.has(bucket)) searchBuckets.set(bucket, []);
     searchBuckets.get(bucket).push(entry);
   }
