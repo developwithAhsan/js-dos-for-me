@@ -278,20 +278,60 @@ function WebCard({ game }: { game: WebIndexGame }) {
   </article>;
 }
 
+
+const featuredTaxonomy = [
+  { label: "Driving & Racing", tag: "racing", icon: "🏎️" },
+  { label: "Car Games", tag: "cars", icon: "🚗" },
+  { label: "Multiplayer", tag: "multiplayer", icon: "🌐" },
+  { label: "Arcade & Classic", tag: "arcade", icon: "🕹️" },
+  { label: "Action", tag: "action", icon: "⚡" },
+  { label: "Shooting", tag: "shooting", icon: "🎯" },
+  { label: "Puzzle & Thinking", tag: "puzzle", icon: "🧩" },
+  { label: "Sports", tag: "sports", icon: "⚽" },
+  { label: "3D Games", tag: "3d", icon: "🧊" },
+  { label: "Kids", tag: "kids", icon: "🎈" },
+  { label: "Cards & Board", tag: "cards", icon: "🃏" },
+  { label: "Simulation", tag: "simulation", icon: "🛠️" },
+];
+
+function GameRail({ title, subtitle, items, icon = "✦" }: {
+  title: string;
+  subtitle?: string;
+  items: WebIndexGame[];
+  icon?: string;
+}) {
+  if (!items.length) return null;
+  return <section class="home-rail">
+    <div class="rail-head">
+      <div>
+        <div class="rail-title"><span class="rail-icon">{icon}</span><h2>{title}</h2></div>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+      <button class="rail-more" onClick={() => {
+        const first = items[0];
+        if (first?.tags?.[0]) go(`/tag/${first.tags[0]}/`);
+      }}>Explore →</button>
+    </div>
+    <div class="rail-track">
+      {items.map((game) => <WebCard game={game} />)}
+    </div>
+  </section>;
+}
+
 function Home() {
   const [index, setIndex] = useState<WebIndexGame[]>([]);
   const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
   const [query, setQuery] = useState("");
-  const [visible, setVisible] = useState(48);
+  const [visible, setVisible] = useState(60);
 
   useEffect(() => {
-    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([games, info]) => {
-      setIndex(games);
+    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([gamesList, info]) => {
+      setIndex(gamesList);
       setMeta(info);
     });
     updateSeo(
-      "DOS Arcade — Play DOS, HTML5 & Browser-Native Games",
-      "Play DOS classics, HTML5 games and browser-native 3D games online with search, categories, favorites and individual game pages.",
+      "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
+      "Discover and play browser games across racing, multiplayer, arcade, shooting, puzzle, sports, 3D and classic PC categories.",
       "/"
     );
   }, []);
@@ -302,56 +342,91 @@ function Home() {
     : index,
   [index, search]);
 
+  const tagCount = (slug: string) => meta.tags.find((tag) => tag.slug === slug)?.count || 0;
+  const byTag = (slug: string, count = 12) => index.filter((game) => game.tags.includes(slug)).slice(0, count);
+  const featured = index.slice(0, 14);
+
   return <main>
-    <section class="hero portal-shell">
-      <div class="eyebrow">Browser gaming library</div>
-      <h1>Classic PC and HTML5 games, organized in one portal.</h1>
-      <p>Play DOS classics, browser-native 3D ports and a large HTML5 catalog. Every game has its own URL, tags, categories, description, favorite button and comments section.</p>
-      <div class="search-panel">
-        <input value={query} onInput={(e) => { setQuery((e.target as HTMLInputElement).value); setVisible(48); }} placeholder="Search games, categories or tags..." aria-label="Search all games" />
-        <button class="primary" onClick={() => document.getElementById("html5-games")?.scrollIntoView()}>Search games</button>
-      </div>
-      <div class="stats">
-        <div class="stat"><strong>{games.length}</strong><span>PC/browser classics</span></div>
-        <div class="stat"><strong>{meta.count.toLocaleString()}</strong><span>HTML5 catalog games</span></div>
-        <div class="stat"><strong>{meta.categories.length + 2}</strong><span>game categories</span></div>
+    <section class="arcade-hero">
+      <div class="portal-shell hero-shell">
+        <div class="hero-copy">
+          <div class="eyebrow">38,000+ browser games</div>
+          <h1>Play instantly. Discover endlessly.</h1>
+          <p>A fast arcade portal for HTML5, DOS classics and browser-native 3D games—organized around the way players actually browse.</p>
+          <div class="hero-search">
+            <span class="search-icon">⌕</span>
+            <input value={query} onInput={(e) => { setQuery((e.target as HTMLInputElement).value); setVisible(60); }} placeholder="Search racing, multiplayer, puzzle, GTA, DOOM..." aria-label="Search games" />
+            <button class="primary" onClick={() => document.getElementById("discover")?.scrollIntoView()}>Search</button>
+          </div>
+          <div class="hero-pills">
+            <button onClick={() => go("/tag/racing/")}>🏎️ Racing</button>
+            <button onClick={() => go("/tag/multiplayer/")}>🌐 Multiplayer</button>
+            <button onClick={() => go("/tag/arcade/")}>🕹️ Arcade</button>
+            <button onClick={() => go("/tag/3d/")}>🧊 3D</button>
+          </div>
+        </div>
+        <div class="hero-showcase">
+          {featured.slice(0, 6).map((game, i) => <button class={`showcase-tile tile-${i}`} onClick={() => go(`/games/${game.slug}/`)}>
+            <img src={game.image} alt="" />
+            <span>{game.title}</span>
+          </button>)}
+          <div class="hero-orbit orbit-a" />
+          <div class="hero-orbit orbit-b" />
+        </div>
       </div>
     </section>
 
-    <section class="section portal-shell">
-      <div class="section-head">
-        <div><div class="eyebrow">Browser classics</div><h2>DOS & browser-native games</h2></div>
-        <div class="section-sub">Dedicated emulator and browser-port experiences with persistent URLs and game-specific controls.</div>
+    <section class="portal-shell category-hub">
+      <div class="section-head compact-head">
+        <div><div class="eyebrow">Browse your way</div><h2>Popular categories</h2></div>
+        <button class="rail-more" onClick={() => document.getElementById("all-categories")?.scrollIntoView()}>All categories ↓</button>
       </div>
-      <div class="game-grid">{games.map((game) => <NativeCard game={game} />)}</div>
-    </section>
-
-    <section class="section portal-shell categories-section">
-      <div class="section-head">
-        <div><div class="eyebrow">Browse by category</div><h2>Game categories</h2></div>
-      </div>
-      <div class="category-grid">
-        <button class="category-card special" onClick={() => go("/category/browser-native-games/")}>
-          <strong>Browser-Native Games</strong><span>3D browser ports and native web builds</span>
-        </button>
-        <button class="category-card special" onClick={() => go("/category/open-world-3d-classics/")}>
-          <strong>Open-World 3D Classics</strong><span>GTA III and Vice City browser experiences</span>
-        </button>
-        {meta.categories.slice(0, 14).map((category) =>
-          <button class="category-card" onClick={() => go(`/category/${category.slug}/`)}>
-            <strong>{category.name}</strong><span>{category.count.toLocaleString()} games</span>
+      <div class="category-bento">
+        {featuredTaxonomy.map((item, i) =>
+          <button class={`category-pill-card cat-${i}`} onClick={() => go(`/tag/${item.tag}/`)}>
+            <span class="category-icon">{item.icon}</span>
+            <span class="category-copy"><strong>{item.label}</strong><small>{tagCount(item.tag).toLocaleString()} games</small></span>
+            <span class="category-arrow">↗</span>
           </button>
         )}
       </div>
     </section>
 
-    <section class="section portal-shell" id="html5-games">
-      <div class="section-head">
-        <div><div class="eyebrow">HTML5 game library</div><h2>{search ? "Search results" : "HTML5 Games"}</h2></div>
-        <div class="section-sub">{search ? `${filtered.length.toLocaleString()} matches` : "Games are loaded from the provided GameMonetize-compatible catalog and keep their original playable embed URLs."}</div>
+    <section class="portal-shell native-feature">
+      <div class="section-head compact-head">
+        <div><div class="eyebrow">Classic PC & browser ports</div><h2>Featured classics</h2></div>
       </div>
-      <div class="game-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
-      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 48)}>Load more games</button></div>}
+      <div class="native-strip">{games.map((game) => <NativeCard game={game} />)}</div>
+    </section>
+
+    {!search && <>
+      <div class="portal-shell rails-stack">
+        <GameRail title="Driving & Racing" subtitle="Cars, drifting, parking and high-speed challenges." items={byTag("racing")} icon="🏎️" />
+        <GameRail title="Multiplayer Games" subtitle="Jump into games built for shared competition and online play." items={byTag("multiplayer")} icon="🌐" />
+        <GameRail title="Arcade & Classic" subtitle="Fast, replayable browser games with an arcade feel." items={byTag("arcade")} icon="🕹️" />
+        <GameRail title="Action & Shooting" subtitle="Fast combat, zombies, battles and shooters." items={[...byTag("action", 8), ...byTag("shooting", 8)].slice(0, 12)} icon="⚡" />
+        <GameRail title="Puzzle & Thinking" subtitle="Logic, matching, escape and problem-solving games." items={byTag("puzzle")} icon="🧩" />
+        <GameRail title="Sports Games" subtitle="Football, basketball, cricket, tennis and more." items={byTag("sports")} icon="⚽" />
+        <GameRail title="3D Browser Games" subtitle="Modern browser games with 3D visuals and WebGL-style experiences." items={byTag("3d")} icon="🧊" />
+        <GameRail title="Kids & Casual" subtitle="Easy-to-play, colorful games for relaxed sessions." items={byTag("kids")} icon="🎈" />
+      </div>
+    </>}
+
+    <section class="section portal-shell" id="discover">
+      <div class="section-head">
+        <div><div class="eyebrow">{search ? "Search" : "Discover more"}</div><h2>{search ? "Search results" : "All games"}</h2></div>
+        <div class="section-sub">{search ? `${filtered.length.toLocaleString()} matches` : `${meta.count.toLocaleString()} playable browser games`}</div>
+      </div>
+      <div class="game-grid dense-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
+      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 60)}>Load more games</button></div>}
+    </section>
+
+    <section class="section portal-shell" id="all-categories">
+      <div class="section-head"><div><div class="eyebrow">Full directory</div><h2>Categories & tags</h2></div></div>
+      <div class="directory-grid">
+        {meta.categories.map((category) => <button onClick={() => go(`/category/${category.slug}/`)}><strong>{category.name}</strong><span>{category.count.toLocaleString()}</span></button>)}
+        {meta.tags.filter((tag) => !["html5", "online-game"].includes(tag.slug)).slice(0, 36).map((tag) => <button onClick={() => go(`/tag/${tag.slug}/`)}><strong>{tag.name}</strong><span>{tag.count.toLocaleString()}</span></button>)}
+      </div>
     </section>
   </main>;
 }
