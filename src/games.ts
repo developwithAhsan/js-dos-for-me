@@ -112,10 +112,12 @@ export const games: Game[] = [
     developer: "Eclipse Productions",
     genres: ["Shoot 'em up", "Arcade"],
     platform: "MS-DOS",
-    description: "A fast vertical shooter well suited to browser emulation and mobile virtual controls.",
-    controls: "Arrow keys to move; configured fire/select keys for weapons and menus.",
-    availability: "bring-your-own",
-    badge: "Bundle required"
+    description: "A fast vertical shooter with freeware data files, well suited to browser emulation and mobile virtual controls.",
+    controls: "Arrow keys to move; Space to fire; Enter toggles rear weapon mode; Ctrl/Alt fire sidekicks.",
+    bundleUrl: "https://cdn.dos.zone/custom/dos/tyrian-2000.jsdos",
+    availability: "playable",
+    badge: "Playable now",
+    sourceLabel: "Tyrian 2000 freeware bundle"
   }
 ];
 
