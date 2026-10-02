@@ -2,14 +2,26 @@
   "rewrites": [
     { "source": "/demos/nfs.zip", "destination": "https://dosgames.com/files/needfspd.zip" },
     { "source": "/demos/gta.zip", "destination": "https://dosgames.com/files/gta8.zip" },
-    { "source": "/games/:slug/", "destination": "/index.html" },
-    { "source": "/games/:slug", "destination": "/index.html" }
+    { "source": "/games/:slug/", "destination": "/api/seo?kind=game&slug=:slug" },
+    { "source": "/games/:slug", "destination": "/api/seo?kind=game&slug=:slug" },
+    { "source": "/category/:slug/", "destination": "/api/seo?kind=category&slug=:slug" },
+    { "source": "/category/:slug", "destination": "/api/seo?kind=category&slug=:slug" },
+    { "source": "/tag/:slug/", "destination": "/api/seo?kind=tag&slug=:slug" },
+    { "source": "/tag/:slug", "destination": "/api/seo?kind=tag&slug=:slug" },
+    { "source": "/favorites/", "destination": "/index.html" },
+    { "source": "/favorites", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/emulators/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/catalog/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }
       ]
     },
     {
