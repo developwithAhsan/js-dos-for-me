@@ -1,4 +1,4 @@
-/* eslint-disable indent, max-len */
+/* eslint-disable */
 export type GameAvailability = "playable" | "bring-your-own";
 
 export type Game = {
