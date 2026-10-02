@@ -7,19 +7,125 @@ import type { DosProps } from "./public/types";
 import { games, genres, getGame, type Game } from "./games";
 import "./portal.css";
 
-const CACHE_NAME = "dos-arcade-bundles-v1";
+const CACHE_NAME = "dos-arcade-bundles-v2";
+const PROFILE_KEY = "dos-arcade-device-profile";
+const FAVORITES_KEY = "dos-arcade-favorites";
 
-function slugFromLocation() {
-  const match = location.pathname.match(/^\/games\/([^/]+)\/?$/);
-  return match?.[1] ?? null;
+type WebIndexGame = {
+  slug: string;
+  title: string;
+  image: string;
+  category: string;
+  tags: string[];
+  type: string;
+};
+
+type WebGame = WebIndexGame & {
+  id: string;
+  url: string;
+  description: string;
+  instructions: string;
+  width: number;
+  height: number;
+};
+
+type TaxonomyItem = { slug: string; name: string; count: number };
+type CatalogMeta = {
+  count: number;
+  generatedAt?: string;
+  categories: TaxonomyItem[];
+  tags: TaxonomyItem[];
+};
+
+type Route =
+  | { type: "home" }
+  | { type: "game"; slug: string }
+  | { type: "category"; slug: string }
+  | { type: "tag"; slug: string }
+  | { type: "favorites" };
+
+function routeFromLocation(): Route {
+  const path = decodeURIComponent(location.pathname);
+  let match = path.match(/^\/games\/([^/]+)\/?$/);
+  if (match) return { type: "game", slug: match[1] };
+  match = path.match(/^\/category\/([^/]+)\/?$/);
+  if (match) return { type: "category", slug: match[1] };
+  match = path.match(/^\/tag\/([^/]+)\/?$/);
+  if (match) return { type: "tag", slug: match[1] };
+  if (/^\/favorites\/?$/.test(path)) return { type: "favorites" };
+  return { type: "home" };
 }
 
-function updateSeo(game?: Game) {
-  const title = game ? `${game.title} Online — Play DOS Game in Browser` : "DOS Arcade — Play Classic DOS Games in Browser";
-  const description = game
-    ? `Play ${game.title} in your browser with js-dos. Fullscreen, local saves, install caching and mobile-ready controls.`
-    : "Play classic DOS games in your browser with js-dos, local caching, fullscreen, saves, search and mobile-ready controls.";
+function go(path: string) {
+  history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
+function bucketFor(slug: string) {
+  const c = (slug[0] || "_").toLowerCase();
+  return /^[a-z0-9]$/.test(c) ? c : "_";
+}
+
+function nativeCategories(game: Game) {
+  return game.categories?.length ? game.categories : [game.platform === "Browser" ? "Browser-Native Games" : "DOS Classics"];
+}
+
+function nativeTags(game: Game) {
+  return game.tags?.length ? game.tags : game.genres;
+}
+
+function taxonomySlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function useFavorites() {
+  const read = () => {
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]"));
+    } catch {
+      return new Set<string>();
+    }
+  };
+  const [favorites, setFavorites] = useState<Set<string>>(read);
+
+  useEffect(() => {
+    const handler = () => setFavorites(read());
+    addEventListener("favorites-changed", handler);
+    return () => removeEventListener("favorites-changed", handler);
+  }, []);
+
+  const toggle = (slug: string) => {
+    const next = read();
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+    window.dispatchEvent(new Event("favorites-changed"));
+  };
+
+  return { favorites, toggle };
+}
+
+async function loadCatalogIndex(): Promise<WebIndexGame[]> {
+  const response = await fetch("/catalog/index.json");
+  if (!response.ok) return [];
+  return response.json();
+}
+
+async function loadCatalogMeta(): Promise<CatalogMeta> {
+  const response = await fetch("/catalog/meta.json");
+  if (!response.ok) return { count: 0, categories: [], tags: [] };
+  return response.json();
+}
+
+async function loadWebGame(slug: string): Promise<WebGame | null> {
+  const response = await fetch(`/catalog/chunks/${bucketFor(slug)}.json`);
+  if (!response.ok) return null;
+  const games: WebGame[] = await response.json();
+  return games.find((game) => game.slug === slug) || null;
+}
+
+function updateSeo(title: string, description: string, canonicalPath: string, image?: string) {
   document.title = title;
   let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
   if (!meta) {
@@ -35,30 +141,23 @@ function updateSeo(game?: Game) {
     canonical.rel = "canonical";
     document.head.appendChild(canonical);
   }
-  canonical.href = game ? `${location.origin}/games/${game.slug}/` : `${location.origin}/`;
+  canonical.href = new URL(canonicalPath, location.origin).href;
 
-  let schema = document.getElementById("page-schema") as HTMLScriptElement | null;
-  if (!schema) {
-    schema = document.createElement("script");
-    schema.id = "page-schema";
-    schema.type = "application/ld+json";
-    document.head.appendChild(schema);
+  for (const [property, content] of [
+    ["og:title", title],
+    ["og:description", description],
+    ["og:url", canonical.href],
+    ["og:image", image || ""],
+  ]) {
+    if (!content) continue;
+    let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+    if (!tag) {
+      tag = document.createElement("meta");
+      tag.setAttribute("property", property);
+      document.head.appendChild(tag);
+    }
+    tag.content = content;
   }
-  schema.textContent = JSON.stringify(game ? {
-    "@context": "https://schema.org",
-    "@type": "VideoGame",
-    name: game.title,
-    datePublished: String(game.year),
-    genre: game.genres,
-    gamePlatform: game.platform,
-    description: game.description
-  } : {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "DOS Arcade",
-    url: location.origin,
-    description
-  });
 }
 
 async function prepareBundle(url: string, onProgress: (value: number, label: string) => void) {
@@ -71,174 +170,244 @@ async function prepareBundle(url: string, onProgress: (value: number, label: str
   const cached = await cache.match(url);
   if (cached) {
     onProgress(100, "Installed locally — starting...");
-    const blob = await cached.blob();
-    return URL.createObjectURL(blob);
+    return URL.createObjectURL(await cached.blob());
   }
 
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) throw new Error(`Download failed (HTTP ${response.status})`);
-
   const total = Number(response.headers.get("content-length") || 0);
-  if (!response.body) {
+  const reader = response.body?.getReader();
+
+  if (!reader) {
     const blob = await response.blob();
-    await cache.put(url, new Response(blob, { headers: { "content-type": "application/octet-stream" } }));
-    onProgress(100, "Installed — starting...");
+    await cache.put(url, new Response(blob));
     return URL.createObjectURL(blob);
   }
 
-  const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value);
     received += value.byteLength;
-    const percent = total ? Math.min(99, Math.round((received / total) * 100)) : Math.min(95, 8 + Math.round(received / (1024 * 1024)));
-    const mb = (received / 1024 / 1024).toFixed(1);
-    onProgress(percent, total ? `Installing… ${percent}% (${mb} MB)` : `Installing… ${mb} MB`);
+    const percent = total ? Math.min(99, Math.round((received / total) * 100)) : Math.min(95, 8 + Math.round(received / 1048576));
+    onProgress(percent, `Installing… ${percent}% · ${(received / 1048576).toFixed(1)} MB`);
   }
 
   const blob = new Blob(chunks, { type: "application/octet-stream" });
-  await cache.put(url, new Response(blob, { headers: { "content-type": "application/octet-stream" } }));
+  await cache.put(url, new Response(blob));
   onProgress(100, "Installed — starting...");
   return URL.createObjectURL(blob);
 }
-
 
 async function prepareDemoZip(url: string, onProgress: (value: number, label: string) => void) {
   const cache = "caches" in window ? await caches.open(CACHE_NAME + "-demo-zips") : null;
   const cached = cache ? await cache.match(url) : null;
   if (cached) {
-    onProgress(100, "Installed locally — preparing game files...");
+    onProgress(100, "Installed locally — preparing files...");
     return new Uint8Array(await cached.arrayBuffer());
   }
 
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Demo download failed (HTTP ${response.status})`);
-
-  const total = Number(response.headers.get("content-length") || 0);
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (cache) await cache.put(url, new Response(bytes));
-    onProgress(100, "Downloaded — preparing game files...");
-    return bytes;
-  }
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.byteLength;
-    const percent = total ? Math.min(99, Math.round((received / total) * 100)) : Math.min(95, 8 + Math.round(received / (1024 * 1024)));
-    const mb = (received / 1024 / 1024).toFixed(1);
-    onProgress(percent, total ? `Installing demo… ${percent}% (${mb} MB)` : `Installing demo… ${mb} MB`);
-  }
-
-  const bytes = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
   if (cache) await cache.put(url, new Response(bytes));
-  onProgress(100, "Downloaded — preparing game files...");
+  onProgress(100, "Downloaded — preparing files...");
   return bytes;
 }
 
-function go(path: string) {
-  history.pushState({}, "", path);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+function TaxonomyChips({ categories, tags }: { categories: string[]; tags: string[] }) {
+  return <div class="taxonomy-chips">
+    {categories.map((name) =>
+      <button class="tax-chip category-chip" onClick={() => go(`/category/${taxonomySlug(name)}/`)}>{name}</button>
+    )}
+    {tags.slice(0, 14).map((name) =>
+      <button class="tax-chip" onClick={() => go(`/tag/${taxonomySlug(name)}/`)}>#{name}</button>
+    )}
+  </div>;
+}
+
+function FavoriteButton({ slug, compact = false }: { slug: string; compact?: boolean }) {
+  const { favorites, toggle } = useFavorites();
+  const active = favorites.has(slug);
+  return <button
+    class={compact ? `favorite-icon ${active ? "active" : ""}` : `secondary favorite-button ${active ? "active" : ""}`}
+    onClick={(event) => {
+      event.stopPropagation();
+      toggle(slug);
+    }}
+    aria-label={active ? "Remove from favorites" : "Add to favorites"}
+  >
+    {active ? "♥" : "♡"}{compact ? "" : active ? " Favorited" : " Favorite"}
+  </button>;
+}
+
+function NativeThumb({ game }: { game: Game }) {
+  if (game.image) return <img class="game-thumb" src={game.image} alt={`${game.title} browser game thumbnail`} loading="lazy" />;
+  return <div class="game-thumb native-thumb"><span>{game.platform}</span><strong>{game.title}</strong></div>;
+}
+
+function NativeCard({ game }: { game: Game }) {
+  return <article class="game-card" onClick={() => go(`/games/${game.slug}/`)}>
+    <div class="thumb-wrap">
+      <NativeThumb game={game} />
+      <FavoriteButton slug={game.slug} compact />
+    </div>
+    <div class="game-card-body">
+      <span class="badge">{game.badge}</span>
+      <h3>{game.title}</h3>
+      <div class="meta">{game.year} · {game.platform}</div>
+      <div class="genre-list">{nativeTags(game).slice(0, 4).map((tag) => <span class="genre">{tag}</span>)}</div>
+    </div>
+  </article>;
+}
+
+function WebCard({ game }: { game: WebIndexGame }) {
+  return <article class="game-card" onClick={() => go(`/games/${game.slug}/`)}>
+    <div class="thumb-wrap">
+      <img class="game-thumb" src={game.image} alt={`${game.title} online game thumbnail`} loading="lazy" referrerPolicy="no-referrer" />
+      <FavoriteButton slug={game.slug} compact />
+    </div>
+    <div class="game-card-body">
+      <span class="badge">HTML5</span>
+      <h3>{game.title}</h3>
+      <div class="meta">{game.category.replace(/-/g, " ")}</div>
+      <div class="genre-list">{game.tags.slice(0, 4).map((tag) => <span class="genre">{tag.replace(/-/g, " ")}</span>)}</div>
+    </div>
+  </article>;
 }
 
 function Home() {
+  const [index, setIndex] = useState<WebIndexGame[]>([]);
+  const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
   const [query, setQuery] = useState("");
-  const [genre, setGenre] = useState("All");
-  const shown = useMemo(() => games.filter((game) => {
-    const q = query.trim().toLowerCase();
-    const matchesText = !q || [game.title, game.developer, game.platform, ...game.genres].join(" ").toLowerCase().includes(q);
-    const matchesGenre = genre === "All" || game.genres.includes(genre);
-    return matchesText && matchesGenre;
-  }), [query, genre]);
+  const [visible, setVisible] = useState(48);
+
+  useEffect(() => {
+    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([games, info]) => {
+      setIndex(games);
+      setMeta(info);
+    });
+    updateSeo(
+      "DOS Arcade — Play DOS, HTML5 & Browser-Native Games",
+      "Play DOS classics, HTML5 games and browser-native 3D games online with search, categories, favorites and individual game pages.",
+      "/"
+    );
+  }, []);
+
+  const search = query.trim().toLowerCase();
+  const filtered = useMemo(() => search
+    ? index.filter((game) => [game.title, game.category, ...game.tags].join(" ").toLowerCase().includes(search))
+    : index,
+  [index, search]);
 
   return <main>
     <section class="hero portal-shell">
-      <div class="eyebrow">Browser-native retro gaming</div>
-      <h1>Classic DOS games. One fast browser arcade.</h1>
-      <p>DOS Arcade is built on js-dos 8 with local installation caching, fullscreen play, saves, mobile-ready input and game-specific pages designed for discoverability.</p>
+      <div class="eyebrow">Browser gaming library</div>
+      <h1>Classic PC and HTML5 games, organized in one portal.</h1>
+      <p>Play DOS classics, browser-native 3D ports and a large HTML5 catalog. Every game has its own URL, tags, categories, description, favorite button and comments section.</p>
       <div class="search-panel">
-        <input aria-label="Search games" value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} placeholder="Search DOOM, GTA, racing, FPS..." />
-        <button class="primary" onClick={() => document.getElementById("library")?.scrollIntoView()}>Browse games</button>
+        <input value={query} onInput={(e) => { setQuery((e.target as HTMLInputElement).value); setVisible(48); }} placeholder="Search games, categories or tags..." aria-label="Search all games" />
+        <button class="primary" onClick={() => document.getElementById("html5-games")?.scrollIntoView()}>Search games</button>
       </div>
       <div class="stats">
-        <div class="stat"><strong>{games.length}</strong><span>catalog entries</span></div>
-        <div class="stat"><strong>{games.filter(g => g.availability === "playable").length}</strong><span>verified demo bundles</span></div>
-        <div class="stat"><strong>OPFS</strong><span>save persistence + local cache</span></div>
+        <div class="stat"><strong>{games.length}</strong><span>PC/browser classics</span></div>
+        <div class="stat"><strong>{meta.count.toLocaleString()}</strong><span>HTML5 catalog games</span></div>
+        <div class="stat"><strong>{meta.categories.length + 2}</strong><span>game categories</span></div>
       </div>
     </section>
 
-    <section class="section portal-shell" id="library">
+    <section class="section portal-shell">
       <div class="section-head">
-        <div>
-          <div class="eyebrow">Game library</div>
-          <h2>Choose a classic</h2>
-        </div>
-        <div class="section-sub">Playable entries start immediately. Other titles are ready for a lawful .jsdos bundle supplied by the owner/user.</div>
+        <div><div class="eyebrow">Browser classics</div><h2>DOS & browser-native games</h2></div>
+        <div class="section-sub">Dedicated emulator and browser-port experiences with persistent URLs and game-specific controls.</div>
       </div>
-      <div class="filters">
-        {["All", ...genres].map((item) => <button class={`filter ${genre === item ? "active" : ""}`} onClick={() => setGenre(item)}>{item}</button>)}
+      <div class="game-grid">{games.map((game) => <NativeCard game={game} />)}</div>
+    </section>
+
+    <section class="section portal-shell categories-section">
+      <div class="section-head">
+        <div><div class="eyebrow">Browse by category</div><h2>Game categories</h2></div>
       </div>
-      <div class="game-grid">
-        {shown.map((game) => <article class="game-card" key={game.slug}>
-          <div>
-            <span class="badge">{game.badge}</span>
-            <h3>{game.title}</h3>
-            <div class="meta">{game.year} · {game.platform} · {game.developer}</div>
-            <div class="genre-list">{game.genres.map((tag) => <span class="genre">{tag}</span>)}</div>
-          </div>
-          <div class="card-actions">
-            <span class="meta">{game.availability === "playable" ? "Install & play" : "Import supported"}</span>
-            <button class="primary" onClick={() => go(`/games/${game.slug}/`)}>Open</button>
-          </div>
-        </article>)}
+      <div class="category-grid">
+        <button class="category-card special" onClick={() => go("/category/browser-native-games/")}>
+          <strong>Browser-Native Games</strong><span>3D browser ports and native web builds</span>
+        </button>
+        <button class="category-card special" onClick={() => go("/category/open-world-3d-classics/")}>
+          <strong>Open-World 3D Classics</strong><span>GTA III and Vice City browser experiences</span>
+        </button>
+        {meta.categories.slice(0, 14).map((category) =>
+          <button class="category-card" onClick={() => go(`/category/${category.slug}/`)}>
+            <strong>{category.name}</strong><span>{category.count.toLocaleString()} games</span>
+          </button>
+        )}
       </div>
+    </section>
+
+    <section class="section portal-shell" id="html5-games">
+      <div class="section-head">
+        <div><div class="eyebrow">HTML5 game library</div><h2>{search ? "Search results" : "HTML5 Games"}</h2></div>
+        <div class="section-sub">{search ? `${filtered.length.toLocaleString()} matches` : "Games are loaded from the provided GameMonetize-compatible catalog and keep their original playable embed URLs."}</div>
+      </div>
+      <div class="game-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
+      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 48)}>Load more games</button></div>}
     </section>
   </main>;
 }
 
-function GamePage({ game }: { game: Game }) {
+function Comments({ slug, title }: { slug: string; title: string }) {
+  useEffect(() => {
+    const win = window as any;
+    win.disqus_config = function() {
+      this.page.url = `${location.origin}/games/${slug}/`;
+      this.page.identifier = `game:${slug}`;
+      this.page.title = title;
+    };
+    if (win.DISQUS) {
+      win.DISQUS.reset({ reload: true, config: win.disqus_config });
+    } else if (!document.querySelector('script[data-disqus="game-comments"]')) {
+      const script = document.createElement("script");
+      script.src = "https://gta3-1.disqus.com/embed.js";
+      script.async = true;
+      script.setAttribute("data-disqus", "game-comments");
+      document.body.appendChild(script);
+    }
+  }, [slug, title]);
+
+  return <section class="comments-card">
+    <div class="eyebrow">Community</div>
+    <h2>Comments</h2>
+    <div id="disqus_thread"></div>
+    <noscript>Please enable JavaScript to view comments.</noscript>
+  </section>;
+}
+
+function NativeGamePage({ game }: { game: Game }) {
   const playerRef = useRef<HTMLDivElement>(null);
   const [props, setProps] = useState<DosProps | null>(null);
-  const [status, setStatus] = useState(game.availability === "playable" ? "Ready to install" : "Import your .jsdos bundle to play");
+  const [status, setStatus] = useState(game.engine === "external" ? "Ready to launch" : game.availability === "playable" ? "Ready to install" : "Use your own .jsdos bundle");
   const [progress, setProgress] = useState(0);
   const [running, setRunning] = useState(false);
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [externalStarted, setExternalStarted] = useState(false);
 
-  useEffect(() => () => {
-    props?.stop().catch(console.error);
-    if (objectUrl?.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
-  }, [props, objectUrl]);
+  useEffect(() => {
+    updateSeo(
+      `${game.title} Online — Play in Browser`,
+      game.description,
+      `/games/${game.slug}/`,
+      game.image
+    );
+    return () => { props?.stop().catch(() => undefined); };
+  }, [game.slug]);
 
-  const launch = async (url: string, cacheRemote: boolean) => {
+  const launchBundle = async (url: string) => {
     if (!playerRef.current) return;
+    setRunning(false);
+    setStatus("Checking local installation...");
     try {
-      setRunning(false);
-      setProgress(2);
-      setStatus(cacheRemote ? "Checking local installation..." : "Preparing local bundle...");
-      await props?.stop().catch(() => undefined);
+      const readyUrl = await prepareBundle(url, (value, label) => { setProgress(value); setStatus(label); });
       playerRef.current.innerHTML = "";
-
-      const readyUrl = cacheRemote ? await prepareBundle(url, (value, label) => {
-        setProgress(value);
-        setStatus(label);
-      }) : url;
-
-      if (readyUrl.startsWith("blob:")) setObjectUrl(readyUrl);
-      setStatus("Starting emulator...");
       const next = Dos(playerRef.current, {
         url: readyUrl,
         pathPrefix: "/emulators/",
@@ -256,55 +425,24 @@ function GamePage({ game }: { game: Game }) {
       });
       setProps(next);
     } catch (error) {
-      console.error(error);
-      setRunning(false);
+      setStatus(error instanceof Error ? error.message : "Unable to start game");
       setProgress(0);
-      setStatus(error instanceof Error ? error.message : "Unable to start this game");
     }
   };
 
   const launchDemo = async (zipUrl: string, command: string) => {
     if (!playerRef.current) return;
+    setStatus("Installing playable demo...");
+    setProgress(5);
     try {
-      setRunning(false);
-      setProgress(2);
-      setStatus("Checking local demo installation...");
-      await props?.stop().catch(() => undefined);
-      playerRef.current.innerHTML = "";
-
-      const zipBytes = await prepareDemoZip(zipUrl, (value, label) => {
-        setProgress(value);
-        setStatus(label);
-      });
+      const zipBytes = await prepareDemoZip(zipUrl, (value, label) => { setProgress(value); setStatus(label); });
       const archive = unzipSync(zipBytes);
       const initFs = Object.entries(archive)
         .filter(([path]) => !path.endsWith("/"))
         .map(([path, contents]) => ({ path, contents }));
-
-      if (initFs.length === 0) throw new Error("The demo archive did not contain game files.");
-
-      setStatus("Starting emulator...");
+      playerRef.current.innerHTML = "";
       const next = Dos(playerRef.current, {
-        dosboxConf: `
-[sdl]
-autolock=true
-
-[dosbox]
-memsize=32
-
-[cpu]
-core=auto
-cycles=max
-
-[sblaster]
-sbtype=sb16
-
-[autoexec]
-@echo off
-mount c .
-c:
-${command}
-`,
+        dosboxConf: `[sdl]\nautolock=true\n[dosbox]\nmemsize=32\n[cpu]\ncore=auto\ncycles=max\n[sblaster]\nsbtype=sb16\n[autoexec]\n@echo off\nmount c .\nc:\n${command}\n`,
         initFs,
         pathPrefix: "/emulators/",
         autoStart: true,
@@ -321,105 +459,298 @@ ${command}
       });
       setProps(next);
     } catch (error) {
-      console.error(error);
-      setRunning(false);
+      setStatus(error instanceof Error ? error.message : "Unable to start demo");
       setProgress(0);
-      setStatus(error instanceof Error ? error.message : "Unable to start this demo");
     }
   };
 
   const installAndPlay = () => {
-    if (game.demoZipUrl && game.command) {
-      launchDemo(game.demoZipUrl, game.command);
+    if (game.engine === "external" && game.externalUrl) {
+      setExternalStarted(true);
+      setRunning(true);
       return;
     }
-    if (game.bundleUrl) launch(game.bundleUrl, true);
+    if (game.demoZipUrl && game.command) launchDemo(game.demoZipUrl, game.command);
+    else if (game.bundleUrl) launchBundle(game.bundleUrl);
   };
 
   const upload = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".jsdos") && !file.name.toLowerCase().endsWith(".zip")) {
-      setStatus("Please choose a .jsdos or compatible .zip bundle.");
-      return;
-    }
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !playerRef.current) return;
     const url = URL.createObjectURL(file);
-    setObjectUrl(url);
-    launch(url, false);
+    playerRef.current.innerHTML = "";
+    const next = Dos(playerRef.current, {
+      url,
+      pathPrefix: "/emulators/",
+      autoStart: true,
+      autoSave: true,
+      onEvent: (event) => {
+        if (event === "ci-ready") {
+          setRunning(true);
+          setStatus("Running");
+        }
+      }
+    });
+    setProps(next);
   };
 
   return <main class="game-page portal-shell">
-    <button class="back" onClick={() => go("/")}>← Back to library</button>
+    <button class="back" onClick={() => go("/")}>← Back to games</button>
+    <TaxonomyChips categories={nativeCategories(game)} tags={nativeTags(game)} />
+    <div class="game-title-row">
+      <div><span class="badge">{game.badge}</span><h1>{game.title}</h1><div class="meta">{game.year} · {game.platform} · {game.developer}</div></div>
+      <FavoriteButton slug={game.slug} />
+    </div>
+
     <div class="game-layout">
       <section class="player-card">
         <div class="player-frame">
-          <div id="dos-player" ref={playerRef}></div>
+          {game.engine === "external" && externalStarted && game.externalUrl
+            ? <iframe class="html5-frame" src={game.externalUrl} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen />
+            : <div id="dos-player" ref={playerRef}></div>}
           {!running && <div class="player-empty">
             <div>
-              <span class="badge">{game.platform}</span>
               <h2>{game.title}</h2>
               <p>{status}</p>
-              {progress > 0 && <><div class="progress-track"><div class="progress-bar" style={{ width: `${progress}%` }}></div></div><div class="meta">{progress}%</div></>}
-              {(game.bundleUrl || game.demoZipUrl) && <button class="primary" onClick={installAndPlay}>Install & Play</button>}
+              {progress > 0 && <><div class="progress-track"><div class="progress-bar" style={{ width: `${progress}%` }} /></div><div class="meta">{progress}%</div></>}
+              {(game.bundleUrl || game.demoZipUrl || game.externalUrl) && <button class="primary" onClick={installAndPlay}>{game.engine === "external" ? "Launch Game" : "Install & Play"}</button>}
             </div>
           </div>}
         </div>
         <div class="player-toolbar">
-          <button class="secondary" onClick={() => props?.setFullScreen(true)} disabled={!props}>Fullscreen</button>
-          <button class="secondary" onClick={() => props?.save()} disabled={!props}>Save</button>
-          <button class="secondary" onClick={() => props?.setPaused(false)} disabled={!props}>Resume</button>
-          <button class="danger" onClick={() => { props?.stop(); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
+          {game.externalUrl && <a class="secondary button-link" href={game.externalUrl} target="_blank" rel="noopener">Open full page</a>}
+          {!game.externalUrl && <>
+            <button class="secondary" onClick={() => props?.setFullScreen(true)} disabled={!props}>Fullscreen</button>
+            <button class="secondary" onClick={() => props?.save()} disabled={!props}>Save</button>
+            <button class="secondary" onClick={() => props?.setPaused(false)} disabled={!props}>Resume</button>
+            <button class="danger" onClick={() => { props?.stop(); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
+          </>}
         </div>
       </section>
 
       <aside class="info-card">
-        <span class="badge">{game.badge}</span>
-        <h1>{game.title}</h1>
-        <div class="meta">{game.year} · {game.platform}</div>
+        <NativeThumb game={game} />
         <p>{game.description}</p>
         <div class="info-row"><strong>Developer</strong>{game.developer}</div>
-        <div class="info-row"><strong>Genres</strong>{game.genres.join(", ")}</div>
+        <div class="info-row"><strong>Categories</strong>{nativeCategories(game).join(", ")}</div>
         <div class="info-row"><strong>Controls</strong>{game.controls}</div>
-        {game.sourceLabel && <div class="info-row"><strong>Bundle source</strong>{game.sourceLabel}</div>}
-        <div class="upload-box">
+        {game.sourceLabel && <div class="info-row"><strong>Game source</strong>{game.sourceLabel}</div>}
+        {!game.externalUrl && <div class="upload-box">
           <strong>Optional: use your own game bundle</strong>
-          <div>Choose a lawful .jsdos bundle from your device. It stays in your browser session and is not uploaded to our server.</div>
+          <div>You can also choose a compatible .jsdos/ZIP bundle stored on your device.</div>
           <input type="file" accept=".jsdos,.zip,application/zip" onChange={upload as any} />
-        </div>
-        {game.availability !== "playable" && <div class="notice">This catalog entry is intentionally not shipping commercial game files. Attach a licensed/user-owned bundle and the same player, cache, saves and fullscreen features will work.</div>}
+        </div>}
       </aside>
     </div>
+    <Comments slug={game.slug} title={game.title} />
   </main>;
 }
 
-function App() {
-  const [slug, setSlug] = useState(slugFromLocation());
+function WebGamePage({ slug }: { slug: string }) {
+  const [game, setGame] = useState<WebGame | null>(null);
+  const [related, setRelated] = useState<WebIndexGame[]>([]);
 
   useEffect(() => {
-    const handle = () => setSlug(slugFromLocation());
+    Promise.all([loadWebGame(slug), loadCatalogIndex()]).then(([detail, index]) => {
+      setGame(detail);
+      if (detail) {
+        setRelated(index.filter((item) => item.category === detail.category && item.slug !== detail.slug).slice(0, 8));
+        updateSeo(
+          `${detail.title} Online — Play Free in Browser`,
+          detail.description,
+          `/games/${detail.slug}/`,
+          detail.image
+        );
+      }
+    });
+  }, [slug]);
+
+  if (!game) return <main class="portal-shell loading-page"><h1>Loading game…</h1></main>;
+
+  return <main class="game-page portal-shell">
+    <button class="back" onClick={() => go("/")}>← Back to games</button>
+    <TaxonomyChips
+      categories={[game.category.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())]}
+      tags={game.tags.map((tag) => tag.replace(/-/g, " "))}
+    />
+    <div class="game-title-row">
+      <div><span class="badge">HTML5</span><h1>{game.title}</h1><div class="meta">Play online in browser</div></div>
+      <FavoriteButton slug={game.slug} />
+    </div>
+    <div class="game-layout">
+      <section class="player-card">
+        <div class="player-frame web-player-frame">
+          <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" />
+        </div>
+        <div class="player-toolbar">
+          <button class="secondary" onClick={() => (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.()}>Fullscreen</button>
+          <a class="secondary button-link" href={game.url} target="_blank" rel="noopener">Open game directly</a>
+        </div>
+      </section>
+      <aside class="info-card">
+        <img class="game-thumb detail-thumb" src={game.image} alt={`${game.title} game thumbnail`} referrerPolicy="no-referrer" />
+        <p>{game.description}</p>
+        <div class="info-row"><strong>Category</strong>{game.category.replace(/-/g, " ")}</div>
+        <div class="info-row"><strong>Game type</strong>{game.type || "HTML5"}</div>
+        <div class="info-row"><strong>How to play</strong>{game.instructions}</div>
+      </aside>
+    </div>
+    {related.length > 0 && <section class="related-section">
+      <div class="section-head"><div><div class="eyebrow">More like this</div><h2>Related games</h2></div></div>
+      <div class="game-grid">{related.map((item) => <WebCard game={item} />)}</div>
+    </section>}
+    <Comments slug={game.slug} title={game.title} />
+  </main>;
+}
+
+function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string }) {
+  const [index, setIndex] = useState<WebIndexGame[]>([]);
+  const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
+  const [visible, setVisible] = useState(72);
+
+  useEffect(() => {
+    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([games, info]) => {
+      setIndex(games);
+      setMeta(info);
+    });
+  }, [slug]);
+
+  const nativeMatches = games.filter((game) => {
+    if (kind === "category") return nativeCategories(game).some((name) => taxonomySlug(name) === slug);
+    return nativeTags(game).some((name) => taxonomySlug(name) === slug);
+  });
+  const webMatches = index.filter((game) => kind === "category" ? game.category === slug : game.tags.includes(slug));
+  const lookup = kind === "category" ? meta.categories : meta.tags;
+  const label = lookup.find((item) => item.slug === slug)?.name
+    || slug.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
+  useEffect(() => {
+    updateSeo(
+      `${label} — Play Online Games`,
+      `Browse and play ${label} online in your browser.`,
+      `/${kind}/${slug}/`
+    );
+  }, [label, slug]);
+
+  return <main class="portal-shell listing-page">
+    <button class="back" onClick={() => go("/")}>← Back to home</button>
+    <div class="eyebrow">{kind}</div>
+    <h1>{label}</h1>
+    <p class="section-sub">{nativeMatches.length + webMatches.length} games in this {kind}.</p>
+    <div class="game-grid">
+      {nativeMatches.map((game) => <NativeCard game={game} />)}
+      {webMatches.slice(0, visible).map((game) => <WebCard game={game} />)}
+    </div>
+    {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more</button></div>}
+  </main>;
+}
+
+function FavoritesPage() {
+  const { favorites } = useFavorites();
+  const [index, setIndex] = useState<WebIndexGame[]>([]);
+  useEffect(() => {
+    loadCatalogIndex().then(setIndex);
+    updateSeo("Favorite Games — DOS Arcade", "Your favorite browser games saved on this device.", "/favorites/");
+  }, []);
+  const native = games.filter((game) => favorites.has(game.slug));
+  const web = index.filter((game) => favorites.has(game.slug));
+  return <main class="portal-shell listing-page">
+    <button class="back" onClick={() => go("/")}>← Back to home</button>
+    <div class="eyebrow">Your library</div>
+    <h1>Favorite Games</h1>
+    {native.length + web.length === 0
+      ? <p class="section-sub">Tap the heart on any game to save it here.</p>
+      : <div class="game-grid">{native.map((game) => <NativeCard game={game} />)}{web.map((game) => <WebCard game={game} />)}</div>}
+  </main>;
+}
+
+function AccountModal({ close }: { close: () => void }) {
+  const stored = (() => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; } })();
+  const [mode, setMode] = useState<"signin" | "signup">(stored ? "signin" : "signup");
+  const [name, setName] = useState(stored?.name || "");
+  const [email, setEmail] = useState(stored?.email || "");
+  const [message, setMessage] = useState("");
+
+  const submit = () => {
+    if (!email.includes("@")) return setMessage("Enter a valid email address.");
+    if (mode === "signup") {
+      if (!name.trim()) return setMessage("Enter a display name.");
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }));
+      setMessage("Device profile created.");
+      setTimeout(close, 350);
+      return;
+    }
+    if (!stored || stored.email !== email.trim().toLowerCase()) {
+      setMessage("No matching device profile found. Create one first.");
+      return;
+    }
+    setMessage("Signed in on this device.");
+    setTimeout(close, 350);
+  };
+
+  return <div class="modal-backdrop" onClick={close}>
+    <div class="account-modal" onClick={(event) => event.stopPropagation()}>
+      <button class="modal-close" onClick={close}>×</button>
+      <div class="eyebrow">Device profile</div>
+      <h2>{mode === "signup" ? "Create profile" : "Sign in"}</h2>
+      <p>This lightweight profile is stored only in this browser. It keeps favorites ready for a future server-backed account system.</p>
+      <div class="mode-tabs">
+        <button class={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>Sign in</button>
+        <button class={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Sign up</button>
+      </div>
+      {mode === "signup" && <input value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder="Display name" />}
+      <input value={email} onInput={(e) => setEmail((e.target as HTMLInputElement).value)} placeholder="Email address" type="email" />
+      {message && <div class="account-message">{message}</div>}
+      <button class="primary" onClick={submit}>{mode === "signup" ? "Create profile" : "Sign in"}</button>
+    </div>
+  </div>;
+}
+
+function App() {
+  const [route, setRoute] = useState<Route>(routeFromLocation());
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(() => {
+    try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; }
+  });
+
+  useEffect(() => {
+    const handle = () => setRoute(routeFromLocation());
     addEventListener("popstate", handle);
     return () => removeEventListener("popstate", handle);
   }, []);
 
-  const game = getGame(slug);
-  useEffect(() => updateSeo(game), [game]);
+  const closeAccount = () => {
+    setAccountOpen(false);
+    try { setProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "null")); } catch {}
+  };
+
+  let content: any = <Home />;
+  if (route.type === "game") {
+    const native = getGame(route.slug);
+    content = native ? <NativeGamePage game={native} /> : <WebGamePage slug={route.slug} />;
+  } else if (route.type === "category") {
+    content = <ListingPage kind="category" slug={route.slug} />;
+  } else if (route.type === "tag") {
+    content = <ListingPage kind="tag" slug={route.slug} />;
+  } else if (route.type === "favorites") {
+    content = <FavoritesPage />;
+  }
 
   return <>
     <header class="site-header">
       <div class="portal-shell nav">
-        <button class="brand" onClick={() => go("/")} style={{ background: "transparent", color: "white", border: 0, padding: 0 }}>
-          <span class="brand-mark">D</span><span>DOS Arcade</span>
-        </button>
+        <button class="brand" onClick={() => go("/")}><span class="brand-mark">D</span><span>DOS Arcade</span></button>
         <nav class="nav-links">
           <button onClick={() => go("/")}>Games</button>
-          <button onClick={() => go("/")}>Popular</button>
-          <button onClick={() => go("/")}>About</button>
+          <button onClick={() => go("/category/browser-native-games/")}>Browser-Native</button>
+          <button onClick={() => go("/favorites/")}>Favorites</button>
+          <button onClick={() => setAccountOpen(true)}>{profile?.name || "Login / Sign up"}</button>
         </nav>
       </div>
     </header>
-    {game ? <GamePage game={game} /> : slug ? <main class="portal-shell hero"><h1>Game not found.</h1><button class="primary" onClick={() => go("/")}>Return home</button></main> : <Home />}
-    <footer class="footer"><div class="portal-shell">DOS Arcade · Powered by js-dos · Game files must be used according to their respective licenses.</div></footer>
+    {content}
+    <footer class="footer"><div class="portal-shell">DOS Arcade · DOS, HTML5 and browser-native games · Original game publishers retain their respective rights.</div></footer>
+    {accountOpen && <AccountModal close={closeAccount} />}
   </>;
 }
 
