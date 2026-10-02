@@ -2404,3 +2404,40 @@ body {
     border-radius:0;
   }
 }
+
+
+.category-tone-13::after { background:#0e7490; }
+.category-tone-14::after { background:#be123c; }
+.category-tone-15::after { background:#7c2d12; }
+.category-tone-16::after { background:#0369a1; }
+.category-tone-17::after { background:#6d28d9; }
+.category-tone-18::after { background:#15803d; }
+.category-tone-19::after { background:#b45309; }
+
+.all-category-shelves {
+  margin-top:22px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+.raw-shelves-list {
+  margin-top:10px;
+}
+.search-shelf-grid {
+  display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:10px;
+}
+.search-shelf-grid .shelf-game-card {
+  width:100%;
+  height:auto;
+  aspect-ratio:4/3;
+}
+@media (max-width:1100px) {
+  .search-shelf-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+}
+@media (max-width:800px) {
+  .search-shelf-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (max-width:560px) {
+  .search-shelf-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
