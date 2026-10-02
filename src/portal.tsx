@@ -16,6 +16,7 @@ type WebIndexGame = {
   title: string;
   image: string;
   category: string;
+  collections: string[];
   tags: string[];
   type: string;
 };
@@ -280,37 +281,35 @@ function WebCard({ game }: { game: WebIndexGame }) {
 
 
 const featuredTaxonomy = [
-  { label: "Driving & Racing", tag: "racing", icon: "🏎️" },
-  { label: "Car Games", tag: "cars", icon: "🚗" },
-  { label: "Multiplayer", tag: "multiplayer", icon: "🌐" },
-  { label: "Arcade & Classic", tag: "arcade", icon: "🕹️" },
-  { label: "Action", tag: "action", icon: "⚡" },
-  { label: "Shooting", tag: "shooting", icon: "🎯" },
-  { label: "Puzzle & Thinking", tag: "puzzle", icon: "🧩" },
-  { label: "Sports", tag: "sports", icon: "⚽" },
-  { label: "3D Games", tag: "3d", icon: "🧊" },
-  { label: "Kids", tag: "kids", icon: "🎈" },
-  { label: "Cards & Board", tag: "cards", icon: "🃏" },
-  { label: "Simulation", tag: "simulation", icon: "🛠️" },
+  { label: "Driving & Racing", slug: "driving-racing", symbol: "DR" },
+  { label: "Multiplayer", slug: "multiplayer", symbol: "MP" },
+  { label: "Arcade & Classic", slug: "arcade-classic", symbol: "AC" },
+  { label: "Board & Puzzle", slug: "board-puzzle", symbol: "BP" },
+  { label: "Shooting", slug: "shooting", symbol: "SH" },
+  { label: "Sports", slug: "sports", symbol: "SP" },
+  { label: "Adventure & RPG", slug: "adventure-rpg", symbol: "AR" },
+  { label: "Strategy & Defense", slug: "strategy-defense", symbol: "SD" },
+  { label: "Kids & Educational", slug: "kids-educational", symbol: "KE" },
+  { label: "Management & Simulation", slug: "management-simulation", symbol: "MS" },
+  { label: "Girls & Lifestyle", slug: "girls-lifestyle", symbol: "GL" },
+  { label: "Fun & Crazy", slug: "fun-crazy", symbol: "FC" },
 ];
 
-function GameRail({ title, subtitle, items, icon = "✦" }: {
+function GameRail({ title, subtitle, items, categorySlug, symbol = "GM" }: {
   title: string;
   subtitle?: string;
   items: WebIndexGame[];
-  icon?: string;
+  categorySlug: string;
+  symbol?: string;
 }) {
   if (!items.length) return null;
   return <section class="home-rail">
     <div class="rail-head">
       <div>
-        <div class="rail-title"><span class="rail-icon">{icon}</span><h2>{title}</h2></div>
+        <div class="rail-title"><span class="rail-icon">{symbol}</span><h2>{title}</h2></div>
         {subtitle && <p>{subtitle}</p>}
       </div>
-      <button class="rail-more" onClick={() => {
-        const first = items[0];
-        if (first?.tags?.[0]) go(`/tag/${first.tags[0]}/`);
-      }}>Explore →</button>
+      <button class="rail-more" onClick={() => go(`/category/${categorySlug}/`)}>View all <span>→</span></button>
     </div>
     <div class="rail-track">
       {items.map((game) => <WebCard game={game} />)}
@@ -342,9 +341,14 @@ function Home() {
     : index,
   [index, search]);
 
-  const tagCount = (slug: string) => meta.tags.find((tag) => tag.slug === slug)?.count || 0;
-  const byTag = (slug: string, count = 12) => index.filter((game) => game.tags.includes(slug)).slice(0, count);
-  const featured = index.slice(0, 14);
+  const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
+  const byCollection = (slug: string, count = 14) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
+  const featured = [
+    ...byCollection("driving-racing", 3),
+    ...byCollection("shooting", 2),
+    ...byCollection("adventure-rpg", 2),
+    ...index
+  ].filter((game, i, arr) => arr.findIndex((entry) => entry.slug === game.slug) === i).slice(0, 14);
 
   return <main>
     <section class="arcade-hero">
@@ -359,10 +363,10 @@ function Home() {
             <button class="primary" onClick={() => document.getElementById("discover")?.scrollIntoView()}>Search</button>
           </div>
           <div class="hero-pills">
-            <button onClick={() => go("/tag/racing/")}>🏎️ Racing</button>
-            <button onClick={() => go("/tag/multiplayer/")}>🌐 Multiplayer</button>
-            <button onClick={() => go("/tag/arcade/")}>🕹️ Arcade</button>
-            <button onClick={() => go("/tag/3d/")}>🧊 3D</button>
+            <button onClick={() => go("/category/driving-racing/")}>Racing</button>
+            <button onClick={() => go("/category/multiplayer/")}>Multiplayer</button>
+            <button onClick={() => go("/category/arcade-classic/")}>Arcade</button>
+            <button onClick={() => go("/category/browser-native-games/")}>Browser 3D</button>
           </div>
         </div>
         <div class="hero-showcase">
@@ -383,9 +387,9 @@ function Home() {
       </div>
       <div class="category-bento">
         {featuredTaxonomy.map((item, i) =>
-          <button class={`category-pill-card cat-${i}`} onClick={() => go(`/tag/${item.tag}/`)}>
-            <span class="category-icon">{item.icon}</span>
-            <span class="category-copy"><strong>{item.label}</strong><small>{tagCount(item.tag).toLocaleString()} games</small></span>
+          <button class={`category-pill-card cat-${i}`} onClick={() => go(`/category/${item.slug}/`)}>
+            <span class="category-icon">{item.symbol}</span>
+            <span class="category-copy"><strong>{item.label}</strong><small>{categoryCount(item.slug).toLocaleString()} games</small></span>
             <span class="category-arrow">↗</span>
           </button>
         )}
@@ -401,14 +405,16 @@ function Home() {
 
     {!search && <>
       <div class="portal-shell rails-stack">
-        <GameRail title="Driving & Racing" subtitle="Cars, drifting, parking and high-speed challenges." items={byTag("racing")} icon="🏎️" />
-        <GameRail title="Multiplayer Games" subtitle="Jump into games built for shared competition and online play." items={byTag("multiplayer")} icon="🌐" />
-        <GameRail title="Arcade & Classic" subtitle="Fast, replayable browser games with an arcade feel." items={byTag("arcade")} icon="🕹️" />
-        <GameRail title="Action & Shooting" subtitle="Fast combat, zombies, battles and shooters." items={[...byTag("action", 8), ...byTag("shooting", 8)].slice(0, 12)} icon="⚡" />
-        <GameRail title="Puzzle & Thinking" subtitle="Logic, matching, escape and problem-solving games." items={byTag("puzzle")} icon="🧩" />
-        <GameRail title="Sports Games" subtitle="Football, basketball, cricket, tennis and more." items={byTag("sports")} icon="⚽" />
-        <GameRail title="3D Browser Games" subtitle="Modern browser games with 3D visuals and WebGL-style experiences." items={byTag("3d")} icon="🧊" />
-        <GameRail title="Kids & Casual" subtitle="Easy-to-play, colorful games for relaxed sessions." items={byTag("kids")} icon="🎈" />
+        <GameRail title="Driving & Racing" subtitle="Cars, drifting, parking and high-speed challenges." items={byCollection("driving-racing")} categorySlug="driving-racing" symbol="DR" />
+        <GameRail title="Multiplayer Games" subtitle="Shared competition, online matches and local multiplayer." items={byCollection("multiplayer")} categorySlug="multiplayer" symbol="MP" />
+        <GameRail title="Arcade & Classic" subtitle="Fast, replayable games with an arcade-first feel." items={byCollection("arcade-classic")} categorySlug="arcade-classic" symbol="AC" />
+        <GameRail title="Shooting" subtitle="FPS, sniper, zombie, combat and battle games." items={byCollection("shooting")} categorySlug="shooting" symbol="SH" />
+        <GameRail title="Board & Puzzle" subtitle="Logic, cards, chess, matching and thinking games." items={byCollection("board-puzzle")} categorySlug="board-puzzle" symbol="BP" />
+        <GameRail title="Sports" subtitle="Football, basketball, cricket, tennis, golf and more." items={byCollection("sports")} categorySlug="sports" symbol="SP" />
+        <GameRail title="Adventure & RPG" subtitle="Explore, survive, escape and complete quests." items={byCollection("adventure-rpg")} categorySlug="adventure-rpg" symbol="AR" />
+        <GameRail title="Strategy & Defense" subtitle="Tactical planning, tower defense and strategy." items={byCollection("strategy-defense")} categorySlug="strategy-defense" symbol="SD" />
+        <GameRail title="Management & Simulation" subtitle="Tycoon, simulator, cooking, idle and management games." items={byCollection("management-simulation")} categorySlug="management-simulation" symbol="MS" />
+        <GameRail title="Kids & Educational" subtitle="Colorful, accessible and learning-friendly games." items={byCollection("kids-educational")} categorySlug="kids-educational" symbol="KE" />
       </div>
     </>}
 
@@ -694,7 +700,7 @@ function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string })
     if (kind === "category") return nativeCategories(game).some((name) => taxonomySlug(name) === slug);
     return nativeTags(game).some((name) => taxonomySlug(name) === slug);
   });
-  const webMatches = index.filter((game) => kind === "category" ? game.category === slug : game.tags.includes(slug));
+  const webMatches = index.filter((game) => kind === "category" ? (game.collections?.includes(slug) || game.category === slug) : game.tags.includes(slug));
   const lookup = kind === "category" ? meta.categories : meta.tags;
   const label = lookup.find((item) => item.slug === slug)?.name
     || slug.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -814,16 +820,32 @@ function App() {
   return <>
     <header class="site-header">
       <div class="portal-shell nav">
-        <button class="brand" onClick={() => go("/")}><span class="brand-mark">D</span><span>DOS Arcade</span></button>
+        <button class="brand" onClick={() => go("/")}>
+          <span class="brand-mark"><span class="brand-core">DA</span><span class="brand-pulse" /></span>
+          <span class="brand-word"><strong>DOS</strong><em>Arcade</em></span>
+        </button>
         <nav class="nav-links">
-          <button onClick={() => go("/")}>Games</button>
-          <button onClick={() => go("/category/browser-native-games/")}>Browser-Native</button>
-          <button onClick={() => go("/favorites/")}>Favorites</button>
-          <button onClick={() => setAccountOpen(true)}>{profile?.name || "Login / Sign up"}</button>
+          <button onClick={() => go("/")}>Discover</button>
+          <button onClick={() => go("/category/driving-racing/")}>Racing</button>
+          <button onClick={() => go("/category/multiplayer/")}>Multiplayer</button>
+          <button onClick={() => go("/category/browser-native-games/")}>Browser 3D</button>
+          <button class="nav-favorite" onClick={() => go("/favorites/")}>♡ Favorites</button>
+          <button class="account-trigger" onClick={() => setAccountOpen(true)}>{profile?.name || "Sign in"}</button>
         </nav>
       </div>
     </header>
+    <div class="header-category-strip">
+      <div class="portal-shell quick-categories">
+        {featuredTaxonomy.slice(0, 8).map((item) => <button onClick={() => go(`/category/${item.slug}/`)}>{item.label}</button>)}
+      </div>
+    </div>
     {content}
+    <nav class="mobile-dock">
+      <button onClick={() => go("/")}><span>⌂</span><small>Home</small></button>
+      <button onClick={() => go("/category/driving-racing/")}><span>▤</span><small>Categories</small></button>
+      <button onClick={() => go("/favorites/")}><span>♡</span><small>Favorites</small></button>
+      <button onClick={() => setAccountOpen(true)}><span>○</span><small>Profile</small></button>
+    </nav>
     <footer class="footer"><div class="portal-shell">DOS Arcade · DOS, HTML5 and browser-native games · Original game publishers retain their respective rights.</div></footer>
     {accountOpen && <AccountModal close={closeAccount} />}
   </>;
