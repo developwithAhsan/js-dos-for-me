@@ -1,4 +1,4 @@
-/* eslint-disable indent, max-len */
+/* eslint-disable */
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Dos } from "./main";
