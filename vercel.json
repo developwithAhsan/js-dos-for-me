@@ -1,33 +1,113 @@
 {
   "rewrites": [
-    { "source": "/demos/nfs.zip", "destination": "https://dosgames.com/files/needfspd.zip" },
-    { "source": "/demos/gta.zip", "destination": "https://dosgames.com/files/gta8.zip" },
-    { "source": "/games/:slug/", "destination": "/api/seo?kind=game&slug=:slug" },
-    { "source": "/games/:slug", "destination": "/api/seo?kind=game&slug=:slug" },
-    { "source": "/category/:slug/", "destination": "/api/seo?kind=category&slug=:slug" },
-    { "source": "/category/:slug", "destination": "/api/seo?kind=category&slug=:slug" },
-    { "source": "/tag/:slug/", "destination": "/api/seo?kind=tag&slug=:slug" },
-    { "source": "/tag/:slug", "destination": "/api/seo?kind=tag&slug=:slug" },
-    { "source": "/favorites/", "destination": "/index.html" },
-    { "source": "/favorites", "destination": "/index.html" }
+    {
+      "source": "/thumbs/doom.gif",
+      "destination": "https://dosgames.com/screens/doom.gif"
+    },
+    {
+      "source": "/thumbs/digger.png",
+      "destination": "https://dosgames.com/screens/digger.png"
+    },
+    {
+      "source": "/thumbs/gta.gif",
+      "destination": "https://dosgames.com/screens/gta.gif"
+    },
+    {
+      "source": "/thumbs/needfspd.gif",
+      "destination": "https://dosgames.com/screens/needfspd.gif"
+    },
+    {
+      "source": "/thumbs/duke3d.gif",
+      "destination": "https://dosgames.com/screens/duke3d.gif"
+    },
+    {
+      "source": "/thumbs/simcity.gif",
+      "destination": "https://dosgames.com/screens/simcity.gif"
+    },
+    {
+      "source": "/thumbs/pop.gif",
+      "destination": "https://dosgames.com/screens/pop.gif"
+    },
+    {
+      "source": "/thumbs/tyrian.gif",
+      "destination": "https://www.dosgames.com/screens/tyrian.gif"
+    },
+    {
+      "source": "/demos/nfs.zip",
+      "destination": "https://dosgames.com/files/needfspd.zip"
+    },
+    {
+      "source": "/demos/gta.zip",
+      "destination": "https://dosgames.com/files/gta8.zip"
+    },
+    {
+      "source": "/games/:slug/",
+      "destination": "/api/seo?kind=game&slug=:slug"
+    },
+    {
+      "source": "/games/:slug",
+      "destination": "/api/seo?kind=game&slug=:slug"
+    },
+    {
+      "source": "/category/:slug/",
+      "destination": "/api/seo?kind=category&slug=:slug"
+    },
+    {
+      "source": "/category/:slug",
+      "destination": "/api/seo?kind=category&slug=:slug"
+    },
+    {
+      "source": "/tag/:slug/",
+      "destination": "/api/seo?kind=tag&slug=:slug"
+    },
+    {
+      "source": "/tag/:slug",
+      "destination": "/api/seo?kind=tag&slug=:slug"
+    },
+    {
+      "source": "/favorites/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/favorites",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/emulators/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/catalog/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400"
+        }
       ]
     },
     {
       "source": "/demos/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=604800" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800"
+        }
+      ]
+    },
+    {
+      "source": "/thumbs/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800"
+        }
       ]
     }
   ]
