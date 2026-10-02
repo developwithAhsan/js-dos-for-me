@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { unzipSync } from "fflate";
 import { Dos } from "./main";
 import type { DosProps } from "./public/types";
 import { games, genres, getGame, type Game } from "./games";
@@ -103,6 +104,50 @@ async function prepareBundle(url: string, onProgress: (value: number, label: str
   await cache.put(url, new Response(blob, { headers: { "content-type": "application/octet-stream" } }));
   onProgress(100, "Installed — starting...");
   return URL.createObjectURL(blob);
+}
+
+
+async function prepareDemoZip(url: string, onProgress: (value: number, label: string) => void) {
+  const cache = "caches" in window ? await caches.open(CACHE_NAME + "-demo-zips") : null;
+  const cached = cache ? await cache.match(url) : null;
+  if (cached) {
+    onProgress(100, "Installed locally — preparing game files...");
+    return new Uint8Array(await cached.arrayBuffer());
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Demo download failed (HTTP ${response.status})`);
+
+  const total = Number(response.headers.get("content-length") || 0);
+  if (!response.body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (cache) await cache.put(url, new Response(bytes));
+    onProgress(100, "Downloaded — preparing game files...");
+    return bytes;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.byteLength;
+    const percent = total ? Math.min(99, Math.round((received / total) * 100)) : Math.min(95, 8 + Math.round(received / (1024 * 1024)));
+    const mb = (received / 1024 / 1024).toFixed(1);
+    onProgress(percent, total ? `Installing demo… ${percent}% (${mb} MB)` : `Installing demo… ${mb} MB`);
+  }
+
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  if (cache) await cache.put(url, new Response(bytes));
+  onProgress(100, "Downloaded — preparing game files...");
+  return bytes;
 }
 
 function go(path: string) {
@@ -218,7 +263,76 @@ function GamePage({ game }: { game: Game }) {
     }
   };
 
+  const launchDemo = async (zipUrl: string, command: string) => {
+    if (!playerRef.current) return;
+    try {
+      setRunning(false);
+      setProgress(2);
+      setStatus("Checking local demo installation...");
+      await props?.stop().catch(() => undefined);
+      playerRef.current.innerHTML = "";
+
+      const zipBytes = await prepareDemoZip(zipUrl, (value, label) => {
+        setProgress(value);
+        setStatus(label);
+      });
+      const archive = unzipSync(zipBytes);
+      const initFs = Object.entries(archive)
+        .filter(([path]) => !path.endsWith("/"))
+        .map(([path, contents]) => ({ path, contents }));
+
+      if (initFs.length === 0) throw new Error("The demo archive did not contain game files.");
+
+      setStatus("Starting emulator...");
+      const next = Dos(playerRef.current, {
+        dosboxConf: `
+[sdl]
+autolock=true
+
+[dosbox]
+memsize=32
+
+[cpu]
+core=auto
+cycles=max
+
+[sblaster]
+sbtype=sb16
+
+[autoexec]
+@echo off
+mount c .
+c:
+${command}
+`,
+        initFs,
+        pathPrefix: "/emulators/",
+        autoStart: true,
+        autoSave: true,
+        offscreenCanvas: true,
+        renderBackend: "webgl",
+        onEvent: (event) => {
+          if (event === "ci-ready") {
+            setRunning(true);
+            setProgress(100);
+            setStatus("Running");
+          }
+        }
+      });
+      setProps(next);
+    } catch (error) {
+      console.error(error);
+      setRunning(false);
+      setProgress(0);
+      setStatus(error instanceof Error ? error.message : "Unable to start this demo");
+    }
+  };
+
   const installAndPlay = () => {
+    if (game.demoZipUrl && game.command) {
+      launchDemo(game.demoZipUrl, game.command);
+      return;
+    }
     if (game.bundleUrl) launch(game.bundleUrl, true);
   };
 
@@ -247,7 +361,7 @@ function GamePage({ game }: { game: Game }) {
               <h2>{game.title}</h2>
               <p>{status}</p>
               {progress > 0 && <><div class="progress-track"><div class="progress-bar" style={{ width: `${progress}%` }}></div></div><div class="meta">{progress}%</div></>}
-              {game.bundleUrl && <button class="primary" onClick={installAndPlay}>Install & Play</button>}
+              {(game.bundleUrl || game.demoZipUrl) && <button class="primary" onClick={installAndPlay}>Install & Play</button>}
             </div>
           </div>}
         </div>
@@ -269,7 +383,7 @@ function GamePage({ game }: { game: Game }) {
         <div class="info-row"><strong>Controls</strong>{game.controls}</div>
         {game.sourceLabel && <div class="info-row"><strong>Bundle source</strong>{game.sourceLabel}</div>}
         <div class="upload-box">
-          <strong>Use your own game bundle</strong>
+          <strong>Optional: use your own game bundle</strong>
           <div>Choose a lawful .jsdos bundle from your device. It stays in your browser session and is not uploaded to our server.</div>
           <input type="file" accept=".jsdos,.zip,application/zip" onChange={upload as any} />
         </div>
