@@ -102,6 +102,7 @@ const curatedCollections = [
   { slug: "arcade-classic", name: "Arcade & Classic", description: "Fast arcade action, retro-inspired and classic browser games." },
   { slug: "board-puzzle", name: "Board & Puzzle", description: "Puzzle, board, card, chess, mahjong and thinking games." },
   { slug: "shooting", name: "Shooting", description: "FPS, sniper, battle, zombie and action shooting games." },
+  { slug: "action-fighting", name: "Action & Fighting", description: "Action, combat, fighting, brawling and battle games." },
   { slug: "sports", name: "Sports", description: "Football, basketball, tennis, cricket, golf and more." },
   { slug: "adventure-rpg", name: "Adventure & RPG", description: "Adventure, exploration, quest, escape and role-playing games." },
   { slug: "strategy-defense", name: "Strategy & Defense", description: "Strategy, tower defense, tactical and planning games." },
@@ -121,6 +122,7 @@ function inferCollections(title, categoryName, tagNames, type) {
   if (has("arcade", "classic", "retro", "runner", "platform", "jump", "snake", "tetris")) found.add("arcade-classic");
   if (has("puzzle", "board", "card", "chess", "mahjong", "solitaire", "match", "brain", "thinking", "word")) found.add("board-puzzle");
   if (has("shoot", "gun", "sniper", "fps", "zombie", "war", "tank", "army", "battle")) found.add("shooting");
+  if (has("action", "fight", "fighting", "combat", "brawl", "ninja", "martial", "boxing", "sword")) found.add("action-fighting");
   if (has("sport", "football", "soccer", "basket", "tennis", "cricket", "golf", "baseball", "bowling")) found.add("sports");
   if (has("adventure", "rpg", "quest", "escape", "survival", "explore", "hero", "dungeon")) found.add("adventure-rpg");
   if (has("strategy", "defense", "tower", "tactical", "war", "kingdom")) found.add("strategy-defense");
@@ -132,7 +134,7 @@ function inferCollections(title, categoryName, tagNames, type) {
   if (found.size === 0) {
     if (categoryName.toLowerCase().includes("puzzle")) found.add("board-puzzle");
     else if (categoryName.toLowerCase().includes("sports")) found.add("sports");
-    else if (categoryName.toLowerCase().includes("action")) found.add("arcade-classic");
+    else if (categoryName.toLowerCase().includes("action") || categoryName.toLowerCase().includes("fighting")) found.add("action-fighting");
     else if (categoryName.toLowerCase().includes("adventure")) found.add("adventure-rpg");
     else found.add("arcade-classic");
   }
@@ -194,6 +196,7 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     category: categorySlug,
     collections,
     tags: gameTags,
+    isNew: sourceIndex < 700,
     type: clean(item.type || item.game_type || "html5").toLowerCase(),
     isNew: sourceIndex < 120,
     width: Number(item.width || item.w || 800) || 800,
@@ -207,6 +210,7 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     category: record.category,
     collections: record.collections,
     tags: record.tags,
+    isNew: record.isNew,
     type: record.type,
     isNew: record.isNew,
   });
