@@ -1,4 +1,4 @@
-const SITE_NAME = "DOS Arcade";
+const SITE_NAME = "PlayZone";
 const NATIVE = {
   "doom": { title: "DOOM", description: "Play the classic DOOM browser demo with js-dos.", image: "" },
   "digger": { title: "Digger", description: "Play the classic Digger DOS game in your browser.", image: "" },
@@ -46,7 +46,7 @@ function shell({ title, description, canonical, image, schema }) {
   <meta property="og:url" content="${esc(canonical)}" />
   ${socialImage}
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n  <link rel="apple-touch-icon" href="/favicon.svg" />\n  <link rel="manifest" href="/site.webmanifest" />
   <script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script>
   <title>${esc(title)}</title>
   <script type="module" crossorigin src="/js-dos.js"></script>
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   const origin = `https://${host}`;
   let title = SITE_NAME;
-  let description = "Play DOS, HTML5 and browser-native games online.";
+  let description = "Play thousands of free online games instantly in your browser, from racing and action to puzzles, multiplayer and PC classics.";
   let image = "";
   let canonical = `${origin}/`;
   let schema = { "@context": "https://schema.org", "@type": "WebSite", name: SITE_NAME, url: origin };
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     } else {
       const response = await fetch(`${origin}/catalog/meta.json`);
       const meta = response.ok ? await response.json() : { categories: [], tags: [] };
-      const source = kind === "category" ? meta.categories : meta.tags;
+      const source = kind === "category" ? [...(meta.categories || []), ...(meta.rawCategories || [])] : (meta.tags || []);
       const item = source.find((entry) => entry.slug === slug);
       const name = item?.name || slug.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
       title = `${name} — Play Online Games`;
@@ -115,5 +115,5 @@ export default async function handler(req, res) {
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400");
-  res.status(200).send(shell({ title, description, canonical, image, schema }));
+  if (!image) image = `${origin}/playzone-logo.svg`;\n  res.status(200).send(shell({ title, description, canonical, image, schema }));
 }
