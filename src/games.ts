@@ -52,10 +52,12 @@ export const games: Game[] = [
     developer: "DMA Design",
     genres: ["Action", "Racing"],
     platform: "MS-DOS",
-    description: "The original top-down Grand Theft Auto. The portal and player profile are ready; a lawfully distributable .jsdos bundle can be attached without changing the UI.",
-    controls: "Keyboard controls vary by bundle. A game-specific touch layout can be attached through jsdos.json.",
-    availability: "bring-your-own",
-    badge: "Bundle required"
+    description: "The original top-down Grand Theft Auto playable DOS demo, packaged automatically for js-dos so it starts directly in the browser.",
+    controls: "Keyboard controls are provided by the original DOS demo. Mobile virtual controls can be layered through js-dos.",
+    bundleUrl: "/bundles/gta-demo.jsdos",
+    availability: "playable",
+    badge: "Playable demo",
+    sourceLabel: "Original DOS playable demo"
   },
   {
     slug: "the-need-for-speed",
@@ -64,10 +66,12 @@ export const games: Game[] = [
     developer: "EA Canada",
     genres: ["Racing"],
     platform: "MS-DOS",
-    description: "The original Need for Speed DOS release. The page, metadata, caching and player integration are prepared for a licensed/user-owned bundle.",
-    controls: "Arrow keys to steer and accelerate; game-specific keys are configurable.",
-    availability: "bring-your-own",
-    badge: "Bundle required"
+    description: "The original Need for Speed playable DOS demo, automatically packaged as a js-dos bundle for one-click browser play.",
+    controls: "Arrow keys steer and accelerate; the demo uses its original DOS keyboard controls.",
+    bundleUrl: "/bundles/need-for-speed-demo.jsdos",
+    availability: "playable",
+    badge: "Playable demo",
+    sourceLabel: "Original EA DOS playable demo"
   },
   {
     slug: "duke-nukem-3d",
