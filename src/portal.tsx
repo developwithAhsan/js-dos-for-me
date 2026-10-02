@@ -327,27 +327,60 @@ function CategoryShelf({ title, slug, count, items, tone }: {
   items: WebIndexGame[];
   tone: number;
 }) {
+  const trackRef = useRef<HTMLDivElement>(null);
   if (!items.length) return null;
   const backdrop = items[0]?.image || "";
+
+  const scrollMore = () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const maxLeft = track.scrollWidth - track.clientWidth;
+    if (track.scrollLeft >= maxLeft - 20) {
+      go(`/category/${slug}/`);
+      return;
+    }
+    track.scrollBy({ left: Math.max(520, track.clientWidth * 0.86), behavior: "smooth" });
+  };
+
   return <section class="category-shelf">
     <button
       class={`category-banner category-tone-${tone % 6}`}
       onClick={() => go(`/category/${slug}/`)}
-      style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,32,.96) 0%, rgba(8,15,32,.72) 44%, rgba(8,15,32,.08) 100%), url("${backdrop}")` }}
+      style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,32,.96) 0%, rgba(8,15,32,.70) 44%, rgba(8,15,32,.04) 100%), url("${backdrop}")` }}
     >
       <span class="category-banner-copy">
         <strong>{title}</strong>
         <small>{count.toLocaleString()} games</small>
       </span>
     </button>
-    <div class="shelf-track">
-      {items.map((game) => <ShelfGameCard game={game} />)}
-      <button class="shelf-next" onClick={() => go(`/category/${slug}/`)} aria-label={`View all ${title} games`}>›</button>
+
+    <div class="shelf-browser">
+      <div class="shelf-track" ref={trackRef}>
+        {items.map((game) => <ShelfGameCard game={game} />)}
+      </div>
+      <button
+        class="shelf-next"
+        onClick={scrollMore}
+        aria-label={`Show more ${title} games`}
+        title={`More ${title} games`}
+      >›</button>
     </div>
   </section>;
 }
 
 function NativeShelf() {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const scrollMore = () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const maxLeft = track.scrollWidth - track.clientWidth;
+    if (track.scrollLeft >= maxLeft - 20) {
+      go("/category/browser-native-games/");
+      return;
+    }
+    track.scrollBy({ left: Math.max(520, track.clientWidth * 0.86), behavior: "smooth" });
+  };
+
   return <section class="category-shelf">
     <button class="category-banner category-tone-native" onClick={() => go("/category/browser-native-games/")}>
       <span class="category-banner-copy">
@@ -355,17 +388,18 @@ function NativeShelf() {
         <small>{games.length} featured games</small>
       </span>
     </button>
-    <div class="shelf-track">
-      {games.map((game) => <NativeShelfCard game={game} />)}
-      <button class="shelf-next" onClick={() => go("/category/browser-native-games/")} aria-label="View browser classics">›</button>
+    <div class="shelf-browser">
+      <div class="shelf-track" ref={trackRef}>
+        {games.map((game) => <NativeShelfCard game={game} />)}
+      </div>
+      <button class="shelf-next" onClick={scrollMore} aria-label="Show more browser classics" title="More browser classics">›</button>
     </div>
   </section>;
 }
 
-function Home() {
+function Home({ query }: { query: string }) {
   const [index, setIndex] = useState<WebIndexGame[]>([]);
   const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
-  const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(72);
 
   useEffect(() => {
@@ -373,20 +407,14 @@ function Home() {
       setIndex(gamesList);
       setMeta(info);
     });
-    const searchHandler = (event: Event) => {
-      const value = (event as CustomEvent<string>).detail || "";
-      setQuery(value);
-      setVisible(72);
-    };
-    addEventListener("site-search", searchHandler);
     updateSeo(
       "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
       "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
       "/"
     );
-    return () => removeEventListener("site-search", searchHandler);
   }, []);
 
+  useEffect(() => setVisible(72), [query]);
   const search = query.trim().toLowerCase();
   const filtered = useMemo(() => search
     ? index.filter((game) => [game.title, game.category, ...game.collections, ...game.tags].join(" ").toLowerCase().includes(search))
@@ -394,7 +422,7 @@ function Home() {
   [index, search]);
 
   const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
-  const byCollection = (slug: string, count = 12) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
+  const byCollection = (slug: string, count = 48) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
 
   if (search) {
     return <main class="home-feed portal-shell search-home">
@@ -826,7 +854,6 @@ function App() {
       history.pushState({}, "", "/");
       setRoute({ type: "home" });
     }
-    queueMicrotask(() => dispatchEvent(new CustomEvent("site-search", { detail: value })));
   };
 
   const openCategories = () => {
@@ -834,7 +861,7 @@ function App() {
     setTimeout(() => document.querySelector(".shelves-list")?.scrollIntoView({ behavior: "smooth" }), 80);
   };
 
-  let content: any = <Home />;
+  let content: any = <Home query={headerQuery} />;
   if (route.type === "game") {
     const native = getGame(route.slug);
     content = native ? <NativeGamePage game={native} /> : <WebGamePage slug={route.slug} />;
