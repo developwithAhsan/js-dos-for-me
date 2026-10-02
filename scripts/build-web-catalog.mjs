@@ -217,9 +217,11 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
 }
 
 const countsByCategory = {};
+const countsByRawCategory = {};
 const countsByTag = {};
 for (const game of full) {
   for (const collection of game.collections) countsByCategory[collection] = (countsByCategory[collection] || 0) + 1;
+  countsByRawCategory[game.category] = (countsByRawCategory[game.category] || 0) + 1;
   for (const tag of game.tags) countsByTag[tag] = (countsByTag[tag] || 0) + 1;
 }
 
@@ -228,7 +230,9 @@ const meta = {
   count: full.length,
   categories: curatedCollections.map((item) => ({ ...item, count: countsByCategory[item.slug] || 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
-  rawCategories: [...categories.values()],
+  rawCategories: [...categories.values()]
+    .map((item) => ({ ...item, count: countsByRawCategory[item.slug] || 0 }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
   tags: [...tags.values()].map((t) => ({ ...t, count: countsByTag[t.slug] || 0 }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
 };
@@ -239,6 +243,29 @@ for (const game of full) {
   if (!buckets.has(key)) buckets.set(key, []);
   buckets.get(key).push(game);
 }
+
+
+const homeCatalog = {
+  generatedAt: new Date().toISOString(),
+  count: full.length,
+  featured: curatedCollections.map((collection) => ({
+    slug: collection.slug,
+    name: collection.name,
+    count: countsByCategory[collection.slug] || 0,
+    items: index.filter((game) => game.collections.includes(collection.slug)).slice(0, 48),
+  })).filter((shelf) => shelf.items.length > 0),
+  raw: [...categories.values()]
+    .map((category) => ({
+      slug: category.slug,
+      name: category.name,
+      count: countsByRawCategory[category.slug] || 0,
+      items: index.filter((game) => game.category === category.slug).slice(0, 48),
+    }))
+    .filter((shelf) => shelf.items.length > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+};
+
+await fs.writeFile(path.join(OUT, "home.json"), JSON.stringify(homeCatalog));
 
 await fs.writeFile(path.join(OUT, "index.json"), JSON.stringify(index));
 await fs.writeFile(path.join(OUT, "meta.json"), JSON.stringify(meta));
