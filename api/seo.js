@@ -19,8 +19,10 @@ function esc(value = "") {
 }
 
 function bucketFor(slug) {
-  const c = (slug[0] || "_").toLowerCase();
-  return /^[a-z0-9]$/.test(c) ? c : "_";
+  const value = String(slug || "").toLowerCase();
+  const first = /^[a-z0-9]$/.test(value[0] || "") ? value[0] : "_";
+  const second = /^[a-z0-9]$/.test(value[1] || "") ? value[1] : "_";
+  return first + second;
 }
 
 function shell({ title, description, canonical, image, schema }) {
