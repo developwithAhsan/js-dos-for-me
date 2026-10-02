@@ -497,7 +497,7 @@ function GameSidebar() {
   return <aside class="game-side-nav">
     <button class="side-close" onClick={() => go("/")} aria-label="Back to homepage">×</button>
     <div class="side-quick">
-      <button onClick={() => go("/tag/new/")}><span class="side-icon side-new">✦</span><strong>New Games</strong></button>
+      <button onClick={() => go("/category/new-games/")}><span class="side-icon side-new">✦</span><strong>New Games</strong></button>
       <button onClick={() => go("/category/arcade-classic/")}><span class="side-icon side-hot">★</span><strong>Popular Games</strong></button>
     </div>
     <div class="side-divider" />
