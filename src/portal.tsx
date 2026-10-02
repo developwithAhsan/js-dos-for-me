@@ -40,6 +40,20 @@ type CatalogMeta = {
   tags: TaxonomyItem[];
 };
 
+type HomeShelf = {
+  slug: string;
+  name: string;
+  count: number;
+  items: WebIndexGame[];
+};
+
+type HomeCatalog = {
+  count: number;
+  generatedAt?: string;
+  featured: HomeShelf[];
+  raw: HomeShelf[];
+};
+
 type Route =
   | { type: "home" }
   | { type: "game"; slug: string }
@@ -118,6 +132,12 @@ async function loadCatalogIndex(): Promise<WebIndexGame[]> {
 async function loadCatalogMeta(): Promise<CatalogMeta> {
   const response = await fetch("/catalog/meta.json");
   if (!response.ok) return { count: 0, categories: [], tags: [] };
+  return response.json();
+}
+
+async function loadHomeCatalog(): Promise<HomeCatalog> {
+  const response = await fetch("/catalog/home.json");
+  if (!response.ok) return { count: 0, featured: [], raw: [] };
   return response.json();
 }
 
@@ -399,15 +419,13 @@ function NativeShelf() {
 }
 
 function Home({ query }: { query: string }) {
+  const [home, setHome] = useState<HomeCatalog>({ count: 0, featured: [], raw: [] });
   const [index, setIndex] = useState<WebIndexGame[]>([]);
-  const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
   const [visible, setVisible] = useState(72);
 
   useEffect(() => {
-    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([gamesList, info]) => {
-      setIndex(gamesList);
-      setMeta(info);
-    });
+    loadHomeCatalog().then(setHome);
     updateSeo(
       "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
       "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
@@ -415,74 +433,75 @@ function Home({ query }: { query: string }) {
     );
   }, []);
 
-  useEffect(() => setVisible(72), [query]);
   const search = query.trim().toLowerCase();
+
+  useEffect(() => {
+    setVisible(72);
+    if (!search || index.length) return;
+    setSearchLoading(true);
+    loadCatalogIndex()
+      .then(setIndex)
+      .finally(() => setSearchLoading(false));
+  }, [search]);
+
   const filtered = useMemo(() => search
     ? index.filter((game) => [game.title, game.category, ...game.collections, ...game.tags].join(" ").toLowerCase().includes(search))
-    : index,
+    : [],
   [index, search]);
 
-  const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
-  const byCollection = (slug: string, count = 48) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
-  const byRawCategory = (slug: string, count = 48) => index.filter((game) => game.category === slug).slice(0, count);
-  const rawCategories = (meta.rawCategories || [])
-    .map((item) => ({ ...item, count: index.filter((game) => game.category === item.slug).length }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const featuredMap = new Map(home.featured.map((shelf) => [shelf.slug, shelf]));
 
   if (search) {
     return <main class="home-feed portal-shell search-home">
       <div class="search-result-head">
         <div><small>Search results</small><h1>{query}</h1></div>
-        <span>{filtered.length.toLocaleString()} games</span>
+        <span>{searchLoading ? "Searching…" : `${filtered.length.toLocaleString()} games`}</span>
       </div>
+      {searchLoading && <div class="catalog-loading">Loading the full game index…</div>}
+      {!searchLoading && filtered.length === 0 && <div class="catalog-loading">No matching games found.</div>}
       <div class="search-shelf-grid">{filtered.slice(0, visible).map((game) => <ShelfGameCard game={game} />)}</div>
       {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
+    </main>;
+  }
+
+  if (!home.count && home.featured.length === 0) {
+    return <main class="home-feed portal-shell">
+      <div class="catalog-loading">Loading games…</div>
     </main>;
   }
 
   return <main class="home-feed portal-shell">
     <div class="home-status-line">
       <strong>Play instantly</strong>
-      <span>{meta.count ? `${meta.count.toLocaleString()} games` : "Loading game library…"}</span>
+      <span>{home.count.toLocaleString()} games</span>
     </div>
 
     <div class="shelves-list">
-      {featuredTaxonomy.slice(0, 5).map((item, i) =>
-        <CategoryShelf
-          title={item.label}
-          slug={item.slug}
-          count={categoryCount(item.slug)}
-          items={byCollection(item.slug)}
-          tone={i}
-        />
-      )}
+      {featuredTaxonomy.slice(0, 5).map((item, i) => {
+        const shelf = featuredMap.get(item.slug);
+        return shelf ? <CategoryShelf title={item.label} slug={item.slug} count={shelf.count} items={shelf.items} tone={i} /> : null;
+      })}
 
       <NativeShelf />
 
-      {featuredTaxonomy.slice(5).map((item, i) =>
-        <CategoryShelf
-          title={item.label}
-          slug={item.slug}
-          count={categoryCount(item.slug)}
-          items={byCollection(item.slug)}
-          tone={i + 5}
-        />
-      )}
+      {featuredTaxonomy.slice(5).map((item, i) => {
+        const shelf = featuredMap.get(item.slug);
+        return shelf ? <CategoryShelf title={item.label} slug={item.slug} count={shelf.count} items={shelf.items} tone={i + 5} /> : null;
+      })}
     </div>
 
-    {rawCategories.length > 0 && <section class="all-category-shelves">
+    {home.raw.length > 0 && <section class="all-category-shelves">
       <div class="all-games-head">
         <div><small>Complete directory</small><h2>More Game Categories</h2></div>
-        <span>{rawCategories.length} categories</span>
+        <span>{home.raw.length} categories</span>
       </div>
       <div class="shelves-list raw-shelves-list">
-        {rawCategories.map((item, i) =>
+        {home.raw.map((item, i) =>
           <CategoryShelf
             title={item.name}
             slug={item.slug}
             count={item.count}
-            items={byRawCategory(item.slug)}
+            items={item.items}
             tone={i + featuredTaxonomy.length}
           />
         )}
@@ -490,7 +509,6 @@ function Home({ query }: { query: string }) {
     </section>}
   </main>;
 }
-
 
 const categoryIcons: Record<string, string> = {
   "driving-racing": "🏎",
