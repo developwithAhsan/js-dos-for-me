@@ -18,6 +18,7 @@ type WebIndexGame = {
   category: string;
   collections: string[];
   tags: string[];
+  isNew?: boolean;
   type: string;
 };
 
@@ -268,95 +269,95 @@ function WebCard({ game }: { game: WebIndexGame }) {
   return <article class="game-card" onClick={() => go(`/games/${game.slug}/`)}>
     <div class="thumb-wrap">
       <img class="game-thumb" src={game.image} alt={`${game.title} online game thumbnail`} loading="lazy" />
+      {game.isNew && <span class="new-corner">NEW</span>}
       <FavoriteButton slug={game.slug} compact />
     </div>
     <div class="game-card-body">
-      <span class="badge">HTML5</span>
       <h3>{game.title}</h3>
       <div class="meta">{game.category.replace(/-/g, " ")}</div>
-      <div class="genre-list">{game.tags.slice(0, 4).map((tag) => <span class="genre">{tag.replace(/-/g, " ")}</span>)}</div>
     </div>
   </article>;
 }
 
+function ShelfGameCard({ game }: { game: WebIndexGame }) {
+  return <article class="shelf-game-card" onClick={() => go(`/games/${game.slug}/`)}>
+    <img src={game.image} alt={`${game.title} online game`} loading="lazy" />
+    {game.isNew && <span class="new-corner">NEW</span>}
+    <FavoriteButton slug={game.slug} compact />
+    <div class="shelf-hover">
+      <strong>{game.title}</strong>
+      <span>Play now</span>
+    </div>
+  </article>;
+}
+
+function NativeShelfCard({ game }: { game: Game }) {
+  return <article class="shelf-game-card native-shelf-card" onClick={() => go(`/games/${game.slug}/`)}>
+    {game.image
+      ? <img src={game.image} alt={`${game.title} browser game`} loading="lazy" />
+      : <div class="native-shelf-art"><small>{game.platform}</small><strong>{game.title}</strong></div>}
+    <FavoriteButton slug={game.slug} compact />
+    <div class="shelf-hover">
+      <strong>{game.title}</strong>
+      <span>{game.badge || "Play"}</span>
+    </div>
+  </article>;
+}
 
 const featuredTaxonomy = [
-  { label: "Driving & Racing", slug: "driving-racing", symbol: "DR" },
-  { label: "Multiplayer", slug: "multiplayer", symbol: "MP" },
-  { label: "Arcade & Classic", slug: "arcade-classic", symbol: "AC" },
-  { label: "Board & Puzzle", slug: "board-puzzle", symbol: "BP" },
-  { label: "Shooting", slug: "shooting", symbol: "SH" },
-  { label: "Sports", slug: "sports", symbol: "SP" },
-  { label: "Adventure & RPG", slug: "adventure-rpg", symbol: "AR" },
-  { label: "Strategy & Defense", slug: "strategy-defense", symbol: "SD" },
-  { label: "Kids & Educational", slug: "kids-educational", symbol: "KE" },
-  { label: "Management & Simulation", slug: "management-simulation", symbol: "MS" },
-  { label: "Girls & Lifestyle", slug: "girls-lifestyle", symbol: "GL" },
-  { label: "Fun & Crazy", slug: "fun-crazy", symbol: "FC" },
+  { label: "Driving & Racing", slug: "driving-racing" },
+  { label: "Shooting", slug: "shooting" },
+  { label: "Action & Fighting", slug: "action-fighting" },
+  { label: "Adventure & RPG", slug: "adventure-rpg" },
+  { label: "Girls & Lifestyle", slug: "girls-lifestyle" },
+  { label: "Multiplayer", slug: "multiplayer" },
+  { label: "Arcade & Classic", slug: "arcade-classic" },
+  { label: "Board & Puzzle", slug: "board-puzzle" },
+  { label: "Sports", slug: "sports" },
+  { label: "Strategy & Defense", slug: "strategy-defense" },
+  { label: "Management & Simulation", slug: "management-simulation" },
+  { label: "Kids & Educational", slug: "kids-educational" },
+  { label: "Fun & Crazy", slug: "fun-crazy" },
 ];
 
-function GameRail({ title, subtitle, items, categorySlug, symbol = "GM" }: {
+function CategoryShelf({ title, slug, count, items, tone }: {
   title: string;
-  subtitle?: string;
+  slug: string;
+  count: number;
   items: WebIndexGame[];
-  categorySlug: string;
-  symbol?: string;
+  tone: number;
 }) {
   if (!items.length) return null;
-  return <section class="home-rail">
-    <div class="rail-head">
-      <div>
-        <div class="rail-title"><span class="rail-icon">{symbol}</span><h2>{title}</h2></div>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
-      <button class="rail-more" onClick={() => go(`/category/${categorySlug}/`)}>View all <span>→</span></button>
-    </div>
-    <div class="rail-track">
-      {items.map((game) => <WebCard game={game} />)}
+  const backdrop = items[0]?.image || "";
+  return <section class="category-shelf">
+    <button
+      class={`category-banner category-tone-${tone % 6}`}
+      onClick={() => go(`/category/${slug}/`)}
+      style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,32,.96) 0%, rgba(8,15,32,.72) 44%, rgba(8,15,32,.08) 100%), url("${backdrop}")` }}
+    >
+      <span class="category-banner-copy">
+        <strong>{title}</strong>
+        <small>{count.toLocaleString()} games</small>
+      </span>
+    </button>
+    <div class="shelf-track">
+      {items.map((game) => <ShelfGameCard game={game} />)}
+      <button class="shelf-next" onClick={() => go(`/category/${slug}/`)} aria-label={`View all ${title} games`}>›</button>
     </div>
   </section>;
 }
 
-
-function HomeGameTile({ game, isNew = false }: { game: WebIndexGame; isNew?: boolean }) {
-  return <article class="shelf-game-card" onClick={() => go(`/games/${game.slug}/`)}>
-    <img src={game.image} alt={`${game.title} online game thumbnail`} loading="lazy" />
-    {isNew && <span class="new-ribbon">NEW</span>}
-    <div class="shelf-game-overlay">
-      <strong>{game.title}</strong>
-      <span class="shelf-game-meta">{game.tags.slice(0, 2).map((tag) => tag.replace(/-/g, " ")).join(" · ")}</span>
-      <FavoriteButton slug={game.slug} compact />
-    </div>
-  </article>;
-}
-
-function CategoryShelf({ title, slug, items, count, tone, isNewRow = false }: {
-  title: string;
-  slug: string;
-  items: WebIndexGame[];
-  count: number;
-  tone: string;
-  isNewRow?: boolean;
-}) {
-  if (!items.length) return null;
-  const cover = items[0]?.image;
+function NativeShelf() {
   return <section class="category-shelf">
-    <button
-      class={`category-cover ${tone}`}
-      onClick={() => go(`/category/${slug}/`)}
-      style={cover ? { backgroundImage: `linear-gradient(90deg, rgba(8,18,30,.96) 0%, rgba(8,18,30,.70) 48%, rgba(8,18,30,.10) 100%), url("${cover}")` } : undefined}
-    >
-      <span class="category-cover-content">
-        <strong>{title}</strong>
-        <small>{count.toLocaleString()} games</small>
+    <button class="category-banner category-tone-native" onClick={() => go("/category/browser-native-games/")}>
+      <span class="category-banner-copy">
+        <strong>PC & Browser Classics</strong>
+        <small>{games.length} featured games</small>
       </span>
-      <span class="category-open-arrow">›</span>
     </button>
-    <div class="shelf-games" aria-label={`${title} games`}>
-      {items.slice(0, 8).map((game, index) =>
-        <HomeGameTile game={game} isNew={isNewRow ? index < 3 : index === 5} />
-      )}
-      <button class="shelf-next" onClick={() => go(`/category/${slug}/`)} aria-label={`View all ${title} games`}>›</button>
+    <div class="shelf-track">
+      {games.map((game) => <NativeShelfCard game={game} />)}
+      <button class="shelf-next" onClick={() => go("/category/browser-native-games/")} aria-label="View browser classics">›</button>
     </div>
   </section>;
 }
@@ -365,104 +366,85 @@ function Home() {
   const [index, setIndex] = useState<WebIndexGame[]>([]);
   const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
   const [query, setQuery] = useState("");
+  const [visible, setVisible] = useState(72);
 
   useEffect(() => {
     Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([gamesList, info]) => {
       setIndex(gamesList);
       setMeta(info);
     });
+    const searchHandler = (event: Event) => {
+      const value = (event as CustomEvent<string>).detail || "";
+      setQuery(value);
+      setVisible(72);
+    };
+    addEventListener("site-search", searchHandler);
     updateSeo(
       "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
-      "Play browser games by category including racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC games.",
+      "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
       "/"
     );
+    return () => removeEventListener("site-search", searchHandler);
   }, []);
 
-  const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
-  const byCollection = (slug: string, count = 18) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
   const search = query.trim().toLowerCase();
-  const searchResults = search
-    ? index.filter((game) => [game.title, game.category, ...(game.tags || [])].join(" ").toLowerCase().includes(search)).slice(0, 80)
-    : [];
+  const filtered = useMemo(() => search
+    ? index.filter((game) => [game.title, game.category, ...game.collections, ...game.tags].join(" ").toLowerCase().includes(search))
+    : index,
+  [index, search]);
 
-  const shelves = [
-    { title: "Driving & Racing", slug: "driving-racing", tone: "tone-cyan", items: byCollection("driving-racing"), isNewRow: false },
-    { title: "Shooting", slug: "shooting", tone: "tone-gold", items: byCollection("shooting"), isNewRow: true },
-    { title: "Arcade & Classic", slug: "arcade-classic", tone: "tone-red", items: byCollection("arcade-classic"), isNewRow: false },
-    { title: "Adventure & RPG", slug: "adventure-rpg", tone: "tone-green", items: byCollection("adventure-rpg"), isNewRow: true },
-    { title: "Girls & Lifestyle", slug: "girls-lifestyle", tone: "tone-pink", items: byCollection("girls-lifestyle"), isNewRow: false },
-    { title: "Board & Puzzle", slug: "board-puzzle", tone: "tone-violet", items: byCollection("board-puzzle"), isNewRow: false },
-    { title: "Multiplayer", slug: "multiplayer", tone: "tone-blue", items: byCollection("multiplayer"), isNewRow: true },
-    { title: "Sports", slug: "sports", tone: "tone-orange", items: byCollection("sports"), isNewRow: false },
-    { title: "Strategy & Defense", slug: "strategy-defense", tone: "tone-slate", items: byCollection("strategy-defense"), isNewRow: false },
-    { title: "Management & Simulation", slug: "management-simulation", tone: "tone-teal", items: byCollection("management-simulation"), isNewRow: false },
-    { title: "Kids & Educational", slug: "kids-educational", tone: "tone-lime", items: byCollection("kids-educational"), isNewRow: false },
-    { title: "Fun & Crazy", slug: "fun-crazy", tone: "tone-purple", items: byCollection("fun-crazy"), isNewRow: false },
-  ];
+  const categoryCount = (slug: string) => meta.categories.find((category) => category.slug === slug)?.count || 0;
+  const byCollection = (slug: string, count = 12) => index.filter((game) => game.collections?.includes(slug)).slice(0, count);
 
-  return <main class="shelf-home">
-    <div class="portal-shell shelf-search-row">
-      <div class="home-search-box">
-        <span>⌕</span>
-        <input
-          value={query}
-          onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
-          placeholder={`Search our ${meta.count ? meta.count.toLocaleString() : "38,000+"} games`}
-          aria-label="Search all games"
+  if (search) {
+    return <main class="home-feed portal-shell search-home">
+      <div class="search-result-head">
+        <div><small>Search results</small><h1>{query}</h1></div>
+        <span>{filtered.length.toLocaleString()} games</span>
+      </div>
+      <div class="game-grid dense-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
+      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more games</button></div>}
+    </main>;
+  }
+
+  return <main class="home-feed portal-shell">
+    <div class="home-status-line">
+      <strong>Play instantly</strong>
+      <span>{meta.count ? `${meta.count.toLocaleString()} games` : "Loading game library…"}</span>
+    </div>
+
+    <div class="shelves-list">
+      {featuredTaxonomy.slice(0, 5).map((item, i) =>
+        <CategoryShelf
+          title={item.label}
+          slug={item.slug}
+          count={categoryCount(item.slug)}
+          items={byCollection(item.slug)}
+          tone={i}
         />
-        {query && <button class="search-clear" onClick={() => setQuery("")}>×</button>}
-      </div>
+      )}
+
+      <NativeShelf />
+
+      {featuredTaxonomy.slice(5).map((item, i) =>
+        <CategoryShelf
+          title={item.label}
+          slug={item.slug}
+          count={categoryCount(item.slug)}
+          items={byCollection(item.slug)}
+          tone={i + 5}
+        />
+      )}
     </div>
 
-    {search ? <section class="portal-shell search-results-panel">
-      <div class="compact-results-head">
-        <strong>Search results</strong>
-        <span>{searchResults.length} shown</span>
+    <section class="all-games-section">
+      <div class="all-games-head">
+        <div><small>More to play</small><h2>All Games</h2></div>
+        <span>{meta.count.toLocaleString()} total</span>
       </div>
-      <div class="search-game-grid">
-        {searchResults.map((game, index) => <HomeGameTile game={game} isNew={index < 4} />)}
-      </div>
-    </section> : <>
-      <div class="portal-shell shelf-list">
-        {shelves.map((shelf) =>
-          <CategoryShelf
-            title={shelf.title}
-            slug={shelf.slug}
-            items={shelf.items}
-            count={categoryCount(shelf.slug)}
-            tone={shelf.tone}
-            isNewRow={shelf.isNewRow}
-          />
-        )}
-
-        <section class="category-shelf native-home-shelf">
-          <button class="category-cover tone-native" onClick={() => go("/category/browser-native-games/")}>
-            <span class="category-cover-content">
-              <strong>PC & Browser Classics</strong>
-              <small>{games.length} featured games</small>
-            </span>
-            <span class="category-open-arrow">›</span>
-          </button>
-          <div class="shelf-games">
-            {games.slice(0, 8).map((game, index) => <article class="shelf-game-card native-shelf-card" onClick={() => go(`/games/${game.slug}/`)}>
-              <NativeThumb game={game} />
-              {index < 2 && <span class="new-ribbon">NEW</span>}
-              <div class="shelf-game-overlay">
-                <strong>{game.title}</strong>
-                <span class="shelf-game-meta">{game.platform}</span>
-                <FavoriteButton slug={game.slug} compact />
-              </div>
-            </article>)}
-            <button class="shelf-next" onClick={() => go("/category/browser-native-games/")}>›</button>
-          </div>
-        </section>
-      </div>
-    </>}
-
-    <div class="portal-shell home-directory-link">
-      <button onClick={() => go("/category/arcade-classic/")}>Browse all categories</button>
-      <span>{meta.count.toLocaleString()} games available</span>
-    </div>
+      <div class="game-grid dense-grid">{index.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
+      {visible < index.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more games</button></div>}
+    </section>
   </main>;
 }
 
@@ -819,12 +801,16 @@ function AccountModal({ close }: { close: () => void }) {
 function App() {
   const [route, setRoute] = useState<Route>(routeFromLocation());
   const [accountOpen, setAccountOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState("");
   const [profile, setProfile] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; }
   });
 
   useEffect(() => {
-    const handle = () => setRoute(routeFromLocation());
+    const handle = () => {
+      setRoute(routeFromLocation());
+      if (routeFromLocation().type !== "home") setHeaderQuery("");
+    };
     addEventListener("popstate", handle);
     return () => removeEventListener("popstate", handle);
   }, []);
@@ -832,6 +818,20 @@ function App() {
   const closeAccount = () => {
     setAccountOpen(false);
     try { setProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "null")); } catch {}
+  };
+
+  const sendSearch = (value: string) => {
+    setHeaderQuery(value);
+    if (route.type !== "home") {
+      history.pushState({}, "", "/");
+      setRoute({ type: "home" });
+    }
+    queueMicrotask(() => dispatchEvent(new CustomEvent("site-search", { detail: value })));
+  };
+
+  const openCategories = () => {
+    if (route.type !== "home") go("/");
+    setTimeout(() => document.querySelector(".shelves-list")?.scrollIntoView({ behavior: "smooth" }), 80);
   };
 
   let content: any = <Home />;
@@ -847,35 +847,41 @@ function App() {
   }
 
   return <>
-    <header class="site-header">
-      <div class="portal-shell nav">
-        <button class="brand" onClick={() => go("/")}>
+    <header class="site-header screenshot-header">
+      <div class="portal-shell screenshot-nav">
+        <button class="hamburger-button" onClick={openCategories} aria-label="Browse categories">☰</button>
+        <button class="brand compact-brand" onClick={() => go("/")}>
           <span class="brand-mark"><span class="brand-core">DA</span><span class="brand-pulse" /></span>
           <span class="brand-word"><strong>DOS</strong><em>Arcade</em></span>
         </button>
-        <nav class="nav-links">
-          <button onClick={() => go("/")}>Discover</button>
-          <button onClick={() => go("/category/driving-racing/")}>Racing</button>
-          <button onClick={() => go("/category/multiplayer/")}>Multiplayer</button>
-          <button onClick={() => go("/category/browser-native-games/")}>Browser 3D</button>
-          <button class="nav-favorite" onClick={() => go("/favorites/")}>♡ Favorites</button>
-          <button class="account-trigger" onClick={() => setAccountOpen(true)}>{profile?.name || "Sign in"}</button>
-        </nav>
+
+        <label class="top-search">
+          <span>⌕</span>
+          <input
+            value={headerQuery}
+            onInput={(e) => sendSearch((e.target as HTMLInputElement).value)}
+            placeholder="Search our 38,000+ games"
+            aria-label="Search games"
+          />
+        </label>
+
+        <button class="top-favorite-button" onClick={() => go("/favorites/")} aria-label="Favorites">♡</button>
+        <button class="profile-avatar" onClick={() => setAccountOpen(true)} aria-label="Account">
+          {(profile?.name || "A").slice(0, 1).toUpperCase()}
+        </button>
       </div>
     </header>
-    <div class="header-category-strip">
-      <div class="portal-shell quick-categories">
-        {featuredTaxonomy.slice(0, 8).map((item) => <button onClick={() => go(`/category/${item.slug}/`)}>{item.label}</button>)}
-      </div>
-    </div>
+
     {content}
+
     <nav class="mobile-dock">
       <button onClick={() => go("/")}><span>⌂</span><small>Home</small></button>
-      <button onClick={() => go("/category/driving-racing/")}><span>▤</span><small>Categories</small></button>
+      <button onClick={openCategories}><span>▤</span><small>Categories</small></button>
       <button onClick={() => go("/favorites/")}><span>♡</span><small>Favorites</small></button>
       <button onClick={() => setAccountOpen(true)}><span>○</span><small>Profile</small></button>
     </nav>
-    <footer class="footer"><div class="portal-shell">DOS Arcade · DOS, HTML5 and browser-native games · Original game publishers retain their respective rights.</div></footer>
+
+    <footer class="footer"><div class="portal-shell">DOS Arcade · Browser, HTML5, DOS and browser-native games.</div></footer>
     {accountOpen && <AccountModal close={closeAccount} />}
   </>;
 }
