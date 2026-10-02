@@ -11,6 +11,8 @@ export type Game = {
   description: string;
   controls: string;
   bundleUrl?: string;
+  demoZipUrl?: string;
+  command?: string;
   availability: GameAvailability;
   badge?: string;
   sourceLabel?: string;
@@ -54,7 +56,8 @@ export const games: Game[] = [
     platform: "MS-DOS",
     description: "The original top-down Grand Theft Auto playable DOS demo, packaged automatically for js-dos so it starts directly in the browser.",
     controls: "Keyboard controls are provided by the original DOS demo. Mobile virtual controls can be layered through js-dos.",
-    bundleUrl: "/bundles/gta-demo.jsdos",
+    demoZipUrl: "/demos/gta.zip",
+    command: "GTA.BAT",
     availability: "playable",
     badge: "Playable demo",
     sourceLabel: "Original DOS playable demo"
@@ -68,7 +71,8 @@ export const games: Game[] = [
     platform: "MS-DOS",
     description: "The original Need for Speed playable DOS demo, automatically packaged as a js-dos bundle for one-click browser play.",
     controls: "Arrow keys steer and accelerate; the demo uses its original DOS keyboard controls.",
-    bundleUrl: "/bundles/need-for-speed-demo.jsdos",
+    demoZipUrl: "/demos/nfs.zip",
+    command: "RUNSB16.BAT",
     availability: "playable",
     badge: "Playable demo",
     sourceLabel: "Original EA DOS playable demo"
