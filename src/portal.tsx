@@ -344,7 +344,7 @@ function CategoryShelf({ title, slug, count, items, tone }: {
 
   return <section class="category-shelf">
     <button
-      class={`category-banner category-tone-${tone % 6}`}
+      class={`category-banner category-tone-${tone % 13}`}
       onClick={() => go(`/category/${slug}/`)}
       style={{ backgroundImage: `linear-gradient(90deg, rgba(8,15,32,.96) 0%, rgba(8,15,32,.70) 44%, rgba(8,15,32,.04) 100%), url("${backdrop}")` }}
     >
@@ -431,7 +431,7 @@ function Home({ query }: { query: string }) {
         <span>{filtered.length.toLocaleString()} games</span>
       </div>
       <div class="game-grid dense-grid">{filtered.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
-      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more games</button></div>}
+      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
     </main>;
   }
 
@@ -471,9 +471,85 @@ function Home({ query }: { query: string }) {
         <span>{meta.count.toLocaleString()} total</span>
       </div>
       <div class="game-grid dense-grid">{index.slice(0, visible).map((game) => <WebCard game={game} />)}</div>
-      {visible < index.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more games</button></div>}
+      {visible < index.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
     </section>
   </main>;
+}
+
+
+const categoryIcons: Record<string, string> = {
+  "driving-racing": "🏎",
+  "shooting": "🎯",
+  "action-fighting": "⚔",
+  "adventure-rpg": "🧭",
+  "girls-lifestyle": "✿",
+  "sports": "⚽",
+  "board-puzzle": "🧩",
+  "multiplayer": "◉",
+  "arcade-classic": "👾",
+  "strategy-defense": "♞",
+  "management-simulation": "⚗",
+  "kids-educational": "🎨",
+  "fun-crazy": "🎪",
+};
+
+function GameSidebar() {
+  return <aside class="game-side-nav">
+    <button class="side-close" onClick={() => go("/")} aria-label="Back to homepage">×</button>
+    <div class="side-quick">
+      <button onClick={() => go("/tag/new/")}><span class="side-icon side-new">✦</span><strong>New Games</strong></button>
+      <button onClick={() => go("/category/arcade-classic/")}><span class="side-icon side-hot">★</span><strong>Popular Games</strong></button>
+    </div>
+    <div class="side-divider" />
+    <nav class="side-categories">
+      {featuredTaxonomy.map((item, i) =>
+        <button onClick={() => go(`/category/${item.slug}/`)}>
+          <span class={`side-icon side-tone-${i % 13}`}>{categoryIcons[item.slug] || "◆"}</span>
+          <strong>{item.label}</strong>
+        </button>
+      )}
+    </nav>
+    <div class="side-divider" />
+    <div class="side-library">
+      <button onClick={() => go("/favorites/")}><span class="side-icon">♡</span><strong>Liked Games</strong></button>
+      <button onClick={() => go("/")}><span class="side-icon">⌂</span><strong>Recommended</strong></button>
+    </div>
+  </aside>;
+}
+
+function GameTagPanel({ tags }: { tags: string[] }) {
+  const unique = [...new Set(tags.filter(Boolean))].slice(0, 10);
+  return <aside class="game-tag-panel">
+    <h3>Tags</h3>
+    <div class="game-tag-grid">
+      {unique.map((tag, i) =>
+        <button class={`game-tag-pill tag-tone-${i % 6}`} onClick={() => go(`/tag/${taxonomySlug(tag)}/`)}>
+          <span>{i % 2 === 0 ? "◇" : "⌁"}</span>{tag}
+        </button>
+      )}
+    </div>
+  </aside>;
+}
+
+function CompactGameActions({ slug, onFullscreen, directUrl }: {
+  slug: string;
+  onFullscreen?: () => void;
+  directUrl?: string;
+}) {
+  const { favorites, toggle } = useFavorites();
+  const liked = favorites.has(slug);
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: document.title, url: location.href });
+      else await navigator.clipboard.writeText(location.href);
+    } catch {}
+  };
+  return <div class="compact-game-actions">
+    <button onClick={() => toggle(slug)} title={liked ? "Remove favorite" : "Add favorite"}>{liked ? "♥" : "♡"}</button>
+    <button onClick={share} title="Share game">↗</button>
+    {directUrl && <a href={directUrl} target="_blank" rel="noopener" title="Open game directly">↗</a>}
+    {onFullscreen && <button onClick={onFullscreen} title="Fullscreen">⛶</button>}
+  </div>;
 }
 
 function Comments({ slug, title }: { slug: string; title: string }) {
@@ -512,12 +588,7 @@ function NativeGamePage({ game }: { game: Game }) {
   const [externalStarted, setExternalStarted] = useState(false);
 
   useEffect(() => {
-    updateSeo(
-      `${game.title} Online — Play in Browser`,
-      game.description,
-      `/games/${game.slug}/`,
-      game.image
-    );
+    updateSeo(`${game.title} Online — Play in Browser`, game.description, `/games/${game.slug}/`, game.image);
     return () => { props?.stop().catch(() => undefined); };
   }, [game.slug]);
 
@@ -614,21 +685,26 @@ function NativeGamePage({ game }: { game: Game }) {
     setProps(next);
   };
 
-  return <main class="game-page portal-shell">
-    <button class="back" onClick={() => go("/")}>← Back to games</button>
-    <TaxonomyChips categories={nativeCategories(game)} tags={nativeTags(game)} />
-    <div class="game-title-row">
-      <div><span class="badge">{game.badge}</span><h1>{game.title}</h1><div class="meta">{game.year} · {game.platform} · {game.developer}</div></div>
-      <FavoriteButton slug={game.slug} />
-    </div>
+  const fullscreen = () => {
+    if (game.externalUrl) {
+      (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.();
+    } else {
+      props?.setFullScreen(true);
+    }
+  };
 
-    <div class="game-layout">
-      <section class="player-card">
-        <div class="player-frame">
+  const categories = nativeCategories(game);
+  const tags = [...nativeTags(game), ...categories, game.platform];
+
+  return <main class="play-page">
+    <div class="play-shell">
+      <GameSidebar />
+      <section class="play-main">
+        <div class="play-stage">
           {game.engine === "external" && externalStarted && game.externalUrl
             ? <iframe class="html5-frame" src={game.externalUrl} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen />
             : <div id="dos-player" ref={playerRef}></div>}
-          {!running && <div class="player-empty">
+          {!running && <div class="player-empty compact-player-empty">
             <div>
               <h2>{game.title}</h2>
               <p>{status}</p>
@@ -637,32 +713,35 @@ function NativeGamePage({ game }: { game: Game }) {
             </div>
           </div>}
         </div>
-        <div class="player-toolbar">
-          {game.externalUrl && <a class="secondary button-link" href={game.externalUrl} target="_blank" rel="noopener">Open full page</a>}
-          {!game.externalUrl && <>
-            <button class="secondary" onClick={() => props?.setFullScreen(true)} disabled={!props}>Fullscreen</button>
-            <button class="secondary" onClick={() => props?.save()} disabled={!props}>Save</button>
-            <button class="secondary" onClick={() => props?.setPaused(false)} disabled={!props}>Resume</button>
-            <button class="danger" onClick={() => { props?.stop(); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
-          </>}
-        </div>
-      </section>
 
-      <aside class="info-card">
-        <NativeThumb game={game} />
-        <p>{game.description}</p>
-        <div class="info-row"><strong>Developer</strong>{game.developer}</div>
-        <div class="info-row"><strong>Categories</strong>{nativeCategories(game).join(", ")}</div>
-        <div class="info-row"><strong>Controls</strong>{game.controls}</div>
-        {game.sourceLabel && <div class="info-row"><strong>Game source</strong>{game.sourceLabel}</div>}
-        {!game.externalUrl && <div class="upload-box">
-          <strong>Optional: use your own game bundle</strong>
-          <div>You can also choose a compatible .jsdos/ZIP bundle stored on your device.</div>
-          <input type="file" accept=".jsdos,.zip,application/zip" onChange={upload as any} />
+        <div class="play-bottom-bar">
+          <div class="play-title">
+            <strong>{game.title}</strong>
+            <span>{game.badge || game.platform}</span>
+          </div>
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} directUrl={game.externalUrl} />
+        </div>
+
+        {!game.externalUrl && <div class="native-tools-row">
+          <button onClick={() => props?.save()} disabled={!props}>Save</button>
+          <button onClick={() => props?.setPaused(false)} disabled={!props}>Resume</button>
+          <label class="bundle-import">Import bundle<input type="file" accept=".jsdos,.zip,application/zip" onChange={upload as any} /></label>
+          <button onClick={() => { props?.stop(); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
         </div>}
-      </aside>
+
+        <section class="game-details-card">
+          <h2>Game details</h2>
+          <p>{game.description}</p>
+          <div class="detail-mini-grid">
+            <div><strong>Developer</strong><span>{game.developer}</span></div>
+            <div><strong>Categories</strong><span>{categories.join(", ")}</span></div>
+            <div><strong>Controls</strong><span>{game.controls}</span></div>
+          </div>
+        </section>
+        <Comments slug={game.slug} title={game.title} />
+      </section>
+      <GameTagPanel tags={tags} />
     </div>
-    <Comments slug={game.slug} title={game.title} />
   </main>;
 }
 
@@ -674,52 +753,63 @@ function WebGamePage({ slug }: { slug: string }) {
     Promise.all([loadWebGame(slug), loadCatalogIndex()]).then(([detail, index]) => {
       setGame(detail);
       if (detail) {
-        setRelated(index.filter((item) => item.category === detail.category && item.slug !== detail.slug).slice(0, 8));
-        updateSeo(
-          `${detail.title} Online — Play Free in Browser`,
-          detail.description,
-          `/games/${detail.slug}/`,
-          detail.image
-        );
+        setRelated(index.filter((item) =>
+          item.slug !== detail.slug &&
+          (item.collections?.some((collection) => detail.collections?.includes(collection)) || item.category === detail.category)
+        ).slice(0, 12));
+        updateSeo(`${detail.title} Online — Play Free in Browser`, detail.description, `/games/${detail.slug}/`, detail.image);
       }
     });
   }, [slug]);
 
   if (!game) return <main class="portal-shell loading-page"><h1>Loading game…</h1></main>;
 
-  return <main class="game-page portal-shell">
-    <button class="back" onClick={() => go("/")}>← Back to games</button>
-    <TaxonomyChips
-      categories={[game.category.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())]}
-      tags={game.tags.map((tag) => tag.replace(/-/g, " "))}
-    />
-    <div class="game-title-row">
-      <div><span class="badge">HTML5</span><h1>{game.title}</h1><div class="meta">Play online in browser</div></div>
-      <FavoriteButton slug={game.slug} />
-    </div>
-    <div class="game-layout">
-      <section class="player-card">
-        <div class="player-frame web-player-frame">
+  const displayTags = [
+    "HTML5",
+    "Browser Game",
+    ...game.tags.map((tag) => tag.replace(/-/g, " ")),
+    ...game.collections.map((tag) => tag.replace(/-/g, " "))
+  ];
+
+  const fullscreen = () => (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.();
+
+  return <main class="play-page">
+    <div class="play-shell">
+      <GameSidebar />
+
+      <section class="play-main">
+        <div class="play-stage web-play-stage">
           <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" />
         </div>
-        <div class="player-toolbar">
-          <button class="secondary" onClick={() => (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.()}>Fullscreen</button>
-          <a class="secondary button-link" href={game.url} target="_blank" rel="noopener">Open game directly</a>
+
+        <div class="play-bottom-bar">
+          <div class="play-title">
+            <strong>{game.title}</strong>
+            <span>{game.category.replace(/-/g, " ")}</span>
+          </div>
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} directUrl={game.url} />
         </div>
+
+        <section class="game-details-card">
+          <h2>Game details</h2>
+          <p>{game.description}</p>
+          <div class="detail-mini-grid">
+            <div><strong>Category</strong><span>{game.category.replace(/-/g, " ")}</span></div>
+            <div><strong>Game type</strong><span>{game.type || "HTML5"}</span></div>
+            <div><strong>How to play</strong><span>{game.instructions}</span></div>
+          </div>
+        </section>
+
+        {related.length > 0 && <section class="related-section compact-related">
+          <div class="all-games-head"><div><small>More like this</small><h2>Related games</h2></div></div>
+          <div class="game-grid dense-grid">{related.map((item) => <WebCard game={item} />)}</div>
+        </section>}
+
+        <Comments slug={game.slug} title={game.title} />
       </section>
-      <aside class="info-card">
-        <img class="game-thumb detail-thumb" src={game.image} alt={`${game.title} game thumbnail`} />
-        <p>{game.description}</p>
-        <div class="info-row"><strong>Category</strong>{game.category.replace(/-/g, " ")}</div>
-        <div class="info-row"><strong>Game type</strong>{game.type || "HTML5"}</div>
-        <div class="info-row"><strong>How to play</strong>{game.instructions}</div>
-      </aside>
+
+      <GameTagPanel tags={displayTags} />
     </div>
-    {related.length > 0 && <section class="related-section">
-      <div class="section-head"><div><div class="eyebrow">More like this</div><h2>Related games</h2></div></div>
-      <div class="game-grid">{related.map((item) => <WebCard game={item} />)}</div>
-    </section>}
-    <Comments slug={game.slug} title={game.title} />
   </main>;
 }
 
@@ -761,7 +851,7 @@ function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string })
       {nativeMatches.map((game) => <NativeCard game={game} />)}
       {webMatches.slice(0, visible).map((game) => <WebCard game={game} />)}
     </div>
-    {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible(visible + 72)}>Load more</button></div>}
+    {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more</button></div>}
   </main>;
 }
 
