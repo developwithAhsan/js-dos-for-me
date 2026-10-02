@@ -346,6 +346,8 @@ const nativeTagUrls = [
   "arcade",
 ];
 const urls = [
+  `${SITE}/category/pc-browser-classics/`,
+  `${SITE}/category/browser-native-games/`,
   ...nativeSlugs.map((slug) => `${SITE}/games/${slug}/`),
   ...full.map((game) => `${SITE}/games/${game.slug}/`),
   ...nativeCategoryUrls.map((slug) => `${SITE}/category/${slug}/`),
