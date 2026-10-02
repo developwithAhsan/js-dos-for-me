@@ -54,6 +54,8 @@ type HomeCatalog = {
   raw: HomeShelf[];
 };
 
+type SearchEntry = [string, string, string, string, number];
+
 type Route =
   | { type: "home" }
   | { type: "game"; slug: string }
@@ -80,8 +82,10 @@ function go(path: string) {
 }
 
 function bucketFor(slug: string) {
-  const c = (slug[0] || "_").toLowerCase();
-  return /^[a-z0-9]$/.test(c) ? c : "_";
+  const value = String(slug || "").toLowerCase();
+  const first = /^[a-z0-9]$/.test(value[0] || "") ? value[0] : "_";
+  const second = /^[a-z0-9]$/.test(value[1] || "") ? value[1] : "_";
+  return first + second;
 }
 
 function nativeCategories(game: Game) {
@@ -123,28 +127,79 @@ function useFavorites() {
   return { favorites, toggle };
 }
 
-async function loadCatalogIndex(): Promise<WebIndexGame[]> {
-  const response = await fetch("/catalog/index.json");
-  if (!response.ok) return [];
-  return response.json();
+let catalogIndexPromise: Promise<WebIndexGame[]> | null = null;
+let homeCatalogPromise: Promise<HomeCatalog> | null = null;
+const categoryPromises = new Map<string, Promise<WebIndexGame[]>>();
+const tagPromises = new Map<string, Promise<WebIndexGame[]>>();
+const searchPromises = new Map<string, Promise<SearchEntry[]>>();
+
+async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+  try {
+    const response = await fetch(url, { cache: "force-cache" });
+    if (!response.ok) return fallback;
+    return await response.json();
+  } catch {
+    return fallback;
+  }
 }
 
-async function loadCatalogMeta(): Promise<CatalogMeta> {
-  const response = await fetch("/catalog/meta.json");
-  if (!response.ok) return { count: 0, categories: [], tags: [] };
-  return response.json();
+function loadCatalogIndex(): Promise<WebIndexGame[]> {
+  if (!catalogIndexPromise) {
+    catalogIndexPromise = fetchJson<WebIndexGame[]>("/catalog/index.json", []);
+  }
+  return catalogIndexPromise;
 }
 
-async function loadHomeCatalog(): Promise<HomeCatalog> {
-  const response = await fetch("/catalog/home.json");
-  if (!response.ok) return { count: 0, featured: [], raw: [] };
-  return response.json();
+function loadCatalogMeta(): Promise<CatalogMeta> {
+  return fetchJson<CatalogMeta>("/catalog/meta.json", { count: 0, categories: [], tags: [] });
+}
+
+function loadHomeCatalog(): Promise<HomeCatalog> {
+  if (!homeCatalogPromise) {
+    homeCatalogPromise = fetchJson<HomeCatalog>("/catalog/home.json", { count: 0, featured: [], raw: [] });
+  }
+  return homeCatalogPromise;
+}
+
+function loadCategoryGames(slug: string): Promise<WebIndexGame[]> {
+  if (!categoryPromises.has(slug)) {
+    categoryPromises.set(slug, fetchJson<WebIndexGame[]>(`/catalog/categories/${slug}.json`, []));
+  }
+  return categoryPromises.get(slug)!;
+}
+
+function loadTagGames(slug: string): Promise<WebIndexGame[]> {
+  if (!tagPromises.has(slug)) {
+    tagPromises.set(slug, fetchJson<WebIndexGame[]>(`/catalog/tags/${slug}.json`, []));
+  }
+  return tagPromises.get(slug)!;
+}
+
+async function loadSearchGames(query: string): Promise<WebIndexGame[]> {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return [];
+  const first = normalized.match(/[a-z0-9]/)?.[0] || "_";
+  if (!searchPromises.has(first)) {
+    searchPromises.set(first, fetchJson<SearchEntry[]>(`/catalog/search/${first}.json`, []));
+  }
+  const entries = await searchPromises.get(first)!;
+  return entries
+    .filter((entry) => entry[3].includes(normalized))
+    .slice(0, 500)
+    .map((entry) => ({
+      slug: entry[0],
+      title: entry[1],
+      image: entry[2],
+      category: "",
+      collections: [],
+      tags: [],
+      isNew: entry[4] === 1,
+      type: "html5",
+    }));
 }
 
 async function loadWebGame(slug: string): Promise<WebGame | null> {
-  const response = await fetch(`/catalog/chunks/${bucketFor(slug)}.json`);
-  if (!response.ok) return null;
-  const games: WebGame[] = await response.json();
+  const games = await fetchJson<WebGame[]>(`/catalog/chunks/${bucketFor(slug)}.json`, []);
   return games.find((game) => game.slug === slug) || null;
 }
 
@@ -300,9 +355,9 @@ function WebCard({ game }: { game: WebIndexGame }) {
   </article>;
 }
 
-function ShelfGameCard({ game }: { game: WebIndexGame }) {
+function ShelfGameCard({ game, priority = false }: { game: WebIndexGame; priority?: boolean }) {
   return <article class="shelf-game-card" onClick={() => go(`/games/${game.slug}/`)}>
-    <img src={game.image} alt={`${game.title} online game`} loading="lazy" />
+    <img src={game.image} alt={`${game.title} online game`} loading={priority ? "eager" : "lazy"} decoding="async" />
     {game.isNew && <span class="new-corner">NEW</span>}
     <FavoriteButton slug={game.slug} compact />
     <div class="shelf-hover">
@@ -349,18 +404,38 @@ function CategoryShelf({ title, slug, count, items, tone }: {
   tone: number;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  if (!items.length) return null;
-  const backdrop = items[0]?.image || "";
+  const [rowItems, setRowItems] = useState(items);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const scrollMore = () => {
+  useEffect(() => {
+    setRowItems(items);
+  }, [slug, items]);
+
+  if (!rowItems.length) return null;
+  const backdrop = rowItems[0]?.image || "";
+
+  const scrollMore = async () => {
     const track = trackRef.current;
     if (!track) return;
     const maxLeft = track.scrollWidth - track.clientWidth;
-    if (track.scrollLeft >= maxLeft - 20) {
-      go(`/category/${slug}/`);
+
+    if (track.scrollLeft < maxLeft - 20) {
+      track.scrollBy({ left: Math.max(520, track.clientWidth * 0.86), behavior: "smooth" });
       return;
     }
-    track.scrollBy({ left: Math.max(520, track.clientWidth * 0.86), behavior: "smooth" });
+
+    if (rowItems.length < count && !loadingMore) {
+      setLoadingMore(true);
+      const all = await loadCategoryGames(slug);
+      if (all.length) setRowItems(all);
+      setLoadingMore(false);
+      requestAnimationFrame(() => {
+        trackRef.current?.scrollBy({ left: Math.max(520, trackRef.current.clientWidth * 0.86), behavior: "smooth" });
+      });
+      return;
+    }
+
+    go(`/category/${slug}/`);
   };
 
   return <section class="category-shelf">
@@ -377,14 +452,14 @@ function CategoryShelf({ title, slug, count, items, tone }: {
 
     <div class="shelf-browser">
       <div class="shelf-track" ref={trackRef}>
-        {items.map((game) => <ShelfGameCard game={game} />)}
+        {rowItems.map((game, index) => <ShelfGameCard game={game} priority={tone < 2 && index < 8} />)}
       </div>
       <button
-        class="shelf-next"
+        class={`shelf-next ${loadingMore ? "loading" : ""}`}
         onClick={scrollMore}
         aria-label={`Show more ${title} games`}
         title={`More ${title} games`}
-      >›</button>
+      >{loadingMore ? "…" : "›"}</button>
     </div>
   </section>;
 }
@@ -418,36 +493,70 @@ function NativeShelf() {
   </section>;
 }
 
+function HomeSkeleton() {
+  return <main class="home-feed portal-shell home-skeleton" aria-label="Loading games">
+    {[0, 1, 2, 3, 4].map((row) => <div class="skeleton-row" key={row}>
+      <div class="skeleton-category" />
+      <div class="skeleton-games">
+        {[0, 1, 2, 3, 4, 5, 6].map((item) => <div class="skeleton-game" key={item} />)}
+      </div>
+    </div>)}
+  </main>;
+}
+
 function Home({ query }: { query: string }) {
   const [home, setHome] = useState<HomeCatalog>({ count: 0, featured: [], raw: [] });
-  const [index, setIndex] = useState<WebIndexGame[]>([]);
+  const [searchResults, setSearchResults] = useState<WebIndexGame[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [visible, setVisible] = useState(72);
 
   useEffect(() => {
-    loadHomeCatalog().then(setHome);
+    let active = true;
+    loadHomeCatalog().then((data) => {
+      if (active) setHome(data);
+    });
     updateSeo(
       "DOS Arcade — Play Browser, HTML5 & Classic PC Games",
       "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
       "/"
     );
+    return () => { active = false; };
   }, []);
 
   const search = query.trim().toLowerCase();
 
   useEffect(() => {
     setVisible(72);
-    if (!search || index.length) return;
-    setSearchLoading(true);
-    loadCatalogIndex()
-      .then(setIndex)
-      .finally(() => setSearchLoading(false));
-  }, [search]);
+    if (!search) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
 
-  const filtered = useMemo(() => search
-    ? index.filter((game) => [game.title, game.category, ...game.collections, ...game.tags].join(" ").toLowerCase().includes(search))
-    : [],
-  [index, search]);
+    const quickPool = [...home.featured, ...home.raw].flatMap((shelf) => shelf.items);
+    const seen = new Set<string>();
+    const quick = quickPool.filter((game) => {
+      if (seen.has(game.slug)) return false;
+      seen.add(game.slug);
+      return [game.title, game.category, ...game.collections, ...game.tags].join(" ").toLowerCase().includes(search);
+    });
+    setSearchResults(quick.slice(0, 72));
+    setSearchLoading(true);
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      loadSearchGames(search).then((results) => {
+        if (!cancelled) setSearchResults(results);
+      }).finally(() => {
+        if (!cancelled) setSearchLoading(false);
+      });
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, home.generatedAt]);
 
   const featuredMap = new Map(home.featured.map((shelf) => [shelf.slug, shelf]));
 
@@ -455,20 +564,15 @@ function Home({ query }: { query: string }) {
     return <main class="home-feed portal-shell search-home">
       <div class="search-result-head">
         <div><small>Search results</small><h1>{query}</h1></div>
-        <span>{searchLoading ? "Searching…" : `${filtered.length.toLocaleString()} games`}</span>
+        <span>{searchLoading ? "Searching…" : `${searchResults.length.toLocaleString()} matches`}</span>
       </div>
-      {searchLoading && <div class="catalog-loading">Loading the full game index…</div>}
-      {!searchLoading && filtered.length === 0 && <div class="catalog-loading">No matching games found.</div>}
-      <div class="search-shelf-grid">{filtered.slice(0, visible).map((game) => <ShelfGameCard game={game} />)}</div>
-      {visible < filtered.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
+      {!searchLoading && searchResults.length === 0 && <div class="catalog-empty">No matching games found.</div>}
+      <div class="search-shelf-grid">{searchResults.slice(0, visible).map((game) => <ShelfGameCard game={game} />)}</div>
+      {visible < searchResults.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more games</button></div>}
     </main>;
   }
 
-  if (!home.count && home.featured.length === 0) {
-    return <main class="home-feed portal-shell">
-      <div class="catalog-loading">Loading games…</div>
-    </main>;
-  }
+  if (!home.count && home.featured.length === 0) return <HomeSkeleton />;
 
   return <main class="home-feed portal-shell">
     <div class="home-status-line">
@@ -586,7 +690,28 @@ function CompactGameActions({ slug, onFullscreen, directUrl }: {
 }
 
 function Comments({ slug, title }: { slug: string; title: string }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(false);
+
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (!("IntersectionObserver" in window)) {
+      setActive(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setActive(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "500px 0px" });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!active) return;
     const win = window as any;
     win.disqus_config = function() {
       this.page.url = `${location.origin}/games/${slug}/`;
@@ -602,12 +727,13 @@ function Comments({ slug, title }: { slug: string; title: string }) {
       script.setAttribute("data-disqus", "game-comments");
       document.body.appendChild(script);
     }
-  }, [slug, title]);
+  }, [active, slug, title]);
 
-  return <section class="comments-card">
+  return <section class="comments-card" ref={rootRef}>
     <div class="eyebrow">Community</div>
     <h2>Comments</h2>
-    <div id="disqus_thread"></div>
+    {!active && <button class="secondary lazy-comments-button" onClick={() => setActive(true)}>Load comments</button>}
+    {active && <div id="disqus_thread"></div>}
     <noscript>Please enable JavaScript to view comments.</noscript>
   </section>;
 }
@@ -783,19 +909,34 @@ function WebGamePage({ slug }: { slug: string }) {
   const [related, setRelated] = useState<WebIndexGame[]>([]);
 
   useEffect(() => {
-    Promise.all([loadWebGame(slug), loadCatalogIndex()]).then(([detail, index]) => {
+    let cancelled = false;
+    setGame(null);
+    setRelated([]);
+
+    loadWebGame(slug).then((detail) => {
+      if (cancelled) return;
       setGame(detail);
-      if (detail) {
-        setRelated(index.filter((item) =>
-          item.slug !== detail.slug &&
-          (item.collections?.some((collection) => detail.collections?.includes(collection)) || item.category === detail.category)
-        ).slice(0, 12));
-        updateSeo(`${detail.title} Online — Play Free in Browser`, detail.description, `/games/${detail.slug}/`, detail.image);
-      }
+      if (!detail) return;
+
+      updateSeo(`${detail.title} Online — Play Free in Browser`, detail.description, `/games/${detail.slug}/`, detail.image);
+
+      const loadRelated = () => {
+        const relatedSlug = detail.collections?.[0] || detail.category;
+        loadCategoryGames(relatedSlug).then((items) => {
+          if (cancelled) return;
+          setRelated(items.filter((item) => item.slug !== detail.slug).slice(0, 12));
+        });
+      };
+
+      const win = window as any;
+      if (typeof win.requestIdleCallback === "function") win.requestIdleCallback(loadRelated, { timeout: 900 });
+      else window.setTimeout(loadRelated, 250);
     });
+
+    return () => { cancelled = true; };
   }, [slug]);
 
-  if (!game) return <main class="portal-shell loading-page"><h1>Loading game…</h1></main>;
+  if (!game) return <main class="play-page"><div class="play-shell game-loading-shell"><GameSidebar /><section class="play-main"><div class="play-stage game-stage-skeleton" /></section></div></main>;
 
   const displayTags = [
     "HTML5",
@@ -812,7 +953,7 @@ function WebGamePage({ slug }: { slug: string }) {
 
       <section class="play-main">
         <div class="play-stage web-play-stage">
-          <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" />
+          <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" loading="eager" />
         </div>
 
         <div class="play-bottom-bar">
@@ -847,23 +988,34 @@ function WebGamePage({ slug }: { slug: string }) {
 }
 
 function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string }) {
-  const [index, setIndex] = useState<WebIndexGame[]>([]);
+  const [webMatches, setWebMatches] = useState<WebIndexGame[]>([]);
   const [meta, setMeta] = useState<CatalogMeta>({ count: 0, categories: [], tags: [] });
+  const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(72);
 
   useEffect(() => {
-    Promise.all([loadCatalogIndex(), loadCatalogMeta()]).then(([games, info]) => {
-      setIndex(games);
+    let active = true;
+    setLoading(true);
+    setVisible(72);
+    Promise.all([
+      kind === "category" ? loadCategoryGames(slug) : loadTagGames(slug),
+      loadCatalogMeta(),
+    ]).then(([items, info]) => {
+      if (!active) return;
+      setWebMatches(items);
       setMeta(info);
+      setLoading(false);
     });
-  }, [slug]);
+    return () => { active = false; };
+  }, [kind, slug]);
 
   const nativeMatches = games.filter((game) => {
     if (kind === "category") return nativeCategories(game).some((name) => taxonomySlug(name) === slug);
     return nativeTags(game).some((name) => taxonomySlug(name) === slug);
   });
-  const webMatches = index.filter((game) => kind === "category" ? (game.collections?.includes(slug) || game.category === slug) : game.tags.includes(slug));
-  const lookup = kind === "category" ? meta.categories : meta.tags;
+
+  const categoryLookup = [...meta.categories, ...(meta.rawCategories || [])];
+  const lookup = kind === "category" ? categoryLookup : meta.tags;
   const label = lookup.find((item) => item.slug === slug)?.name
     || slug.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 
@@ -879,12 +1031,14 @@ function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string })
     <button class="back" onClick={() => go("/")}>← Back to home</button>
     <div class="eyebrow">{kind}</div>
     <h1>{label}</h1>
-    <p class="section-sub">{nativeMatches.length + webMatches.length} games in this {kind}.</p>
-    <div class="game-grid">
-      {nativeMatches.map((game) => <NativeCard game={game} />)}
-      {webMatches.slice(0, visible).map((game) => <WebCard game={game} />)}
-    </div>
-    {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more</button></div>}
+    <p class="section-sub">{loading ? "Loading games…" : `${nativeMatches.length + webMatches.length} games in this ${kind}.`}</p>
+    {loading ? <div class="listing-skeleton-grid">{Array.from({ length: 16 }).map((_, i) => <div class="skeleton-game large" key={i} />)}</div> : <>
+      <div class="game-grid">
+        {nativeMatches.map((game) => <NativeCard game={game} />)}
+        {webMatches.slice(0, visible).map((game) => <WebCard game={game} />)}
+      </div>
+      {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more</button></div>}
+    </>}
   </main>;
 }
 
