@@ -61,6 +61,41 @@ function bucketFor(slug) {
   return /^[a-z0-9]$/.test(c) ? c : "_";
 }
 
+const keywordTags = [
+  ["racing", "Racing"], ["race", "Racing"], ["car", "Cars"], ["drift", "Drifting"],
+  ["bike", "Motorbike"], ["moto", "Motorbike"], ["truck", "Trucks"], ["parking", "Parking"],
+  ["shoot", "Shooting"], ["gun", "Shooting"], ["sniper", "Sniper"], ["zombie", "Zombie"],
+  ["war", "War"], ["tank", "Tank"], ["army", "Military"], ["battle", "Battle"],
+  ["puzzle", "Puzzle"], ["match", "Matching"], ["mahjong", "Mahjong"], ["solitaire", "Cards"],
+  ["card", "Cards"], ["chess", "Chess"], ["football", "Football"], ["soccer", "Football"],
+  ["basket", "Basketball"], ["tennis", "Tennis"], ["cricket", "Cricket"], ["golf", "Golf"],
+  ["runner", "Runner"], ["running", "Runner"], ["jump", "Platform"], ["platform", "Platform"],
+  ["adventure", "Adventure"], ["quest", "Adventure"], ["escape", "Escape"], ["room", "Escape"],
+  ["dress", "Dress Up"], ["makeup", "Makeup"], ["cooking", "Cooking"], ["food", "Food"],
+  ["kids", "Kids"], ["baby", "Kids"], ["girl", "Girls"], ["boy", "Boys"],
+  ["io", "IO"], ["multiplayer", "Multiplayer"], ["3d", "3D"], ["idle", "Idle"],
+  ["clicker", "Clicker"], ["merge", "Merge"], ["tycoon", "Tycoon"], ["simulator", "Simulation"],
+  ["strategy", "Strategy"], ["defense", "Defense"], ["tower", "Tower Defense"],
+];
+
+function inferredTags(title, categoryName, rawTags, type) {
+  const names = new Set();
+  const sourceTags = Array.isArray(rawTags) ? rawTags : String(rawTags || "").split(",");
+  for (const tag of sourceTags.map(clean).filter(Boolean)) names.add(tag);
+
+  const categoryBase = clean(categoryName).replace(/\s+Games$/i, "");
+  if (categoryBase) names.add(categoryBase);
+  names.add(type && String(type).toLowerCase().includes("html") ? "HTML5" : "Browser Game");
+  names.add("Online Game");
+
+  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`.toLowerCase();
+  for (const [needle, label] of keywordTags) {
+    if (haystack.includes(needle)) names.add(label);
+    if (names.size >= 10) break;
+  }
+  return [...names].slice(0, 10);
+}
+
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, "chunks"), { recursive: true });
 
@@ -96,10 +131,8 @@ for (const item of sourceGames) {
     name: categoryName.endsWith("Games") ? categoryName : `${categoryName} Games`,
   });
 
-  const tagList = Array.isArray(item.tags)
-    ? item.tags
-    : String(item.tags || "").split(",");
-  const gameTags = tagList.map(clean).filter(Boolean).slice(0, 24).map((name) => {
+  const inferred = inferredTags(title, categoryName, item.tags, item.type || item.game_type || "html5");
+  const gameTags = inferred.map((name) => {
     const tagSlug = slugify(name);
     if (!tags.has(tagSlug)) tags.set(tagSlug, { slug: tagSlug, name });
     return tagSlug;
