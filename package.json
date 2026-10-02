@@ -20,7 +20,7 @@
   "homepage": "https://js-dos.com",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "mkdir -p public/emulators && cp -rv node_modules/emulators/dist/* public/emulators/ && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
