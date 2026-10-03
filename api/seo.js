@@ -324,15 +324,21 @@ export default async function handler(req, res) {
   let result;
 
   try {
-    if (kind === "favorites") {
+    if (kind === "favorites" || kind === "recent") {
+      const isRecent = kind === "recent";
       result = shell({
-        title: `Favorite Games | ${SITE_NAME}`,
-        description: "Your favorite games saved on this device.",
-        canonical: `${origin}/favorites/`,
+        title: isRecent ? `Recently Played Games | ${SITE_NAME}` : `Favorite Games | ${SITE_NAME}`,
+        description: isRecent ? "Games recently played on this device." : "Your favorite games saved on this device.",
+        canonical: isRecent ? `${origin}/recent/` : `${origin}/favorites/`,
         image: `${origin}/playzone-logo.svg`,
-        schema: { "@context": "https://schema.org", "@type": "WebPage", name: "Favorite Games", url: `${origin}/favorites/` },
-        heading: "Favorite Games",
-        bodyText: "Your favorites are stored on this device.",
+        schema: {
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: isRecent ? "Recently Played Games" : "Favorite Games",
+          url: isRecent ? `${origin}/recent/` : `${origin}/favorites/`
+        },
+        heading: isRecent ? "Recently Played Games" : "Favorite Games",
+        bodyText: isRecent ? "Your recently played games are stored on this device." : "Your favorites are stored on this device.",
         robots: "noindex,follow",
       });
     } else if (kind === "game") {
