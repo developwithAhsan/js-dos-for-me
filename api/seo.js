@@ -500,9 +500,9 @@ export default async function handler(req, res) {
           image: related[0]?.image ? absoluteUrl(origin, related[0].image) : `${origin}/playzone-logo.svg`,
           keywords,
           schema,
-          heading: `${name} Games`,
+          heading: `${baseName} Games`,
           bodyText: `${description} Browse ${Number(summary.count || related.length).toLocaleString("en-US")} games in this collection.`,
-          tags: [name, "Online Games", "Browser Games"],
+          tags: kind === "tag" ? [name] : [],
           related,
         });
       }
