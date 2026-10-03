@@ -306,7 +306,7 @@ function notFound(origin, kind, slug) {
     title: `Page Not Found | ${SITE_NAME}`,
     description: "This game or collection could not be found.",
     canonical,
-    image: `${origin}/playzone-logo.svg`,
+    image: `${origin}/favicon.svg`,
     schema: { "@context": "https://schema.org", "@type": "WebPage", name: "Page Not Found", url: canonical },
     heading: "Page not found",
     bodyText: "The requested game or collection does not exist.",
@@ -330,7 +330,7 @@ export default async function handler(req, res) {
         title: isRecent ? `Recently Played Games | ${SITE_NAME}` : `Favorite Games | ${SITE_NAME}`,
         description: isRecent ? "Games recently played on this device." : "Your favorite games saved on this device.",
         canonical: isRecent ? `${origin}/recent/` : `${origin}/favorites/`,
-        image: `${origin}/playzone-logo.svg`,
+        image: `${origin}/favicon.svg`,
         schema: {
           "@context": "https://schema.org",
           "@type": "WebPage",
@@ -354,7 +354,7 @@ export default async function handler(req, res) {
         const categoryName = titleCase(game.category || game.collections?.[0] || "Browser Games");
         const tags = (game.tags || []).map(titleCase).filter(Boolean);
         const canonical = `${origin}/games/${slug}/`;
-        const image = absoluteUrl(origin, game.image) || `${origin}/playzone-logo.svg`;
+        const image = absoluteUrl(origin, game.image) || `${origin}/favicon.svg`;
         const description = truncate(
           game.description && cleanText(game.description).length > 35
             ? game.description
@@ -504,7 +504,7 @@ export default async function handler(req, res) {
           title: pageTitle,
           description,
           canonical,
-          image: related[0]?.image ? absoluteUrl(origin, related[0].image) : `${origin}/playzone-logo.svg`,
+          image: related[0]?.image ? absoluteUrl(origin, related[0].image) : `${origin}/favicon.svg`,
           keywords,
           schema,
           heading: `${baseName} Games`,
@@ -522,7 +522,7 @@ export default async function handler(req, res) {
       title: `Temporary Error | ${SITE_NAME}`,
       description: "This page is temporarily unavailable.",
       canonical: `${origin}/`,
-      image: `${origin}/playzone-logo.svg`,
+      image: `${origin}/favicon.svg`,
       schema: { "@context": "https://schema.org", "@type": "WebPage", name: "Temporary Error", url: origin },
       heading: "Temporary error",
       bodyText: "Please try again shortly.",
