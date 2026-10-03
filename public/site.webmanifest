@@ -1,11 +1,15 @@
 {
+  "id": "/playzone/",
   "name": "PlayZone — Free Online Games",
   "short_name": "PlayZone",
-  "description": "Play thousands of free browser games, multiplayer favorites and PC classics instantly with no download required.",
-  "start_url": "/",
+  "description": "Play thousands of free browser games, multiplayer favorites and PC classics instantly.",
+  "start_url": "/?launch=installed",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#07090d",
   "theme_color": "#2563eb",
+  "categories": ["games", "entertainment"],
   "icons": [
     {
       "src": "/favicon.svg",
