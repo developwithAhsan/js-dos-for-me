@@ -93,9 +93,23 @@ function inferredTags(title, categoryName, rawTags, type) {
   names.add("Browser Game");
   names.add("Online Game");
 
-  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`.toLowerCase();
+  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const padded = ` ${haystack} `;
+  for (const [needle, label] of keywordTags) {
+    const normalized = String(needle).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const exactShort = normalized.length <= 3 || normalized === "io";
+    const matched = exactShort
+      ? padded.includes(` ${normalized} `)
+      : new RegExp(`\\b${normalized.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`.toLowerCase();
   for (const [needle, label] of keywordTags) {
     if (haystack.includes(needle)) names.add(label);
+    if (names.size >= 10) break;
+  }")}[a-z0-9]*\\b`, "i").test(haystack);
+    if (matched) names.add(label);
     if (names.size >= 10) break;
   }
   return [...names].slice(0, 10);
@@ -105,6 +119,7 @@ const curatedCollections = [
   { slug: "new-games", name: "New Games", description: "The newest games recently added to the browser catalog." },
   { slug: "driving-racing", name: "Driving & Racing", description: "Cars, bikes, drifting, parking and racing games." },
   { slug: "multiplayer", name: "Multiplayer", description: "Online, local and competitive multiplayer games." },
+  { slug: "io-multiplayer", name: "IO & Multiplayer Games", description: "Fast browser-based IO, arena, territory, survival and real-time multiplayer games." },
   { slug: "arcade-classic", name: "Arcade & Classic", description: "Fast arcade action, retro-inspired and classic browser games." },
   { slug: "board-puzzle", name: "Board & Puzzle", description: "Puzzle, board, card, chess, mahjong and thinking games." },
   { slug: "shooting", name: "Shooting", description: "FPS, sniper, battle, zombie and action shooting games." },
@@ -155,6 +170,26 @@ function inferCollections(title, categoryName, tagNames, type) {
   return [...found];
 }
 
+function ioMultiplayerScore(title, categoryName, tagNames) {
+  const titleText = String(title || "").toLowerCase();
+  const categoryText = String(categoryName || "").toLowerCase();
+  const tags = new Set((tagNames || []).map((tag) => String(tag).toLowerCase().trim()));
+  const text = `${titleText} ${categoryText} ${[...tags].join(" ")}`
+    .replace(/[^a-z0-9.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let score = 0;
+  if (/\.io\b/i.test(titleText) || /(^|[\s.-])io($|[\s.-])/i.test(titleText)) score += 10;
+  if (tags.has("io") || tags.has(".io") || tags.has("io games")) score += 9;
+  if (categoryText.includes("multiplayer")) score += 8;
+  if (tags.has("multiplayer")) score += 7;
+  if (/\bmultiplayer\b|\bonline pvp\b|\bpvp\b|\bbattle royale\b/i.test(text)) score += 5;
+  if (/\barena\b|\bterritory\b|\bsnake\b|\bsurvival\b|\bleaderboard\b|\bgrow\b/i.test(text)) score += 2;
+  return score;
+}
+
+
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, "chunks"), { recursive: true });
 await fs.mkdir(path.join(OUT, "categories"), { recursive: true });
@@ -177,6 +212,7 @@ const categories = new Map();
 const tags = new Map();
 const full = [];
 const index = [];
+const ioCandidates = [];
 
 for (const [sourceIndex, item] of sourceGames.entries()) {
   const title = clean(item.title || item.name);
@@ -223,6 +259,9 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     width: Number(item.width || item.w || 800) || 800,
     height: Number(item.height || item.h || 600) || 600,
   };
+  const ioScore = ioMultiplayerScore(title, categoryName, inferred);
+  if (ioScore >= 7) ioCandidates.push({ record, score: ioScore, sourceIndex });
+
   full.push(record);
   index.push({
     slug: record.slug,
@@ -235,6 +274,16 @@ for (const [sourceIndex, item] of sourceGames.entries()) {
     type: record.type,
   });
 }
+
+// Keep the IO shelf focused: strongest real-time/browser multiplayer candidates first,
+// capped at 200 so the dedicated collection stays useful and fast.
+ioCandidates
+  .sort((a, b) => b.score - a.score || a.sourceIndex - b.sourceIndex)
+  .slice(0, 200)
+  .forEach(({ record }) => {
+    if (!record.collections.includes("io-multiplayer")) record.collections.push("io-multiplayer");
+    if (!record.collections.includes("multiplayer")) record.collections.push("multiplayer");
+  });
 
 const countsByCategory = {};
 const countsByRawCategory = {};
