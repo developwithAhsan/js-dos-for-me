@@ -680,10 +680,9 @@ function GameTagPanel({ tags }: { tags: string[] }) {
   </aside>;
 }
 
-function CompactGameActions({ slug, onFullscreen, directUrl }: {
+function CompactGameActions({ slug, onFullscreen }: {
   slug: string;
   onFullscreen?: () => void;
-  directUrl?: string;
 }) {
   const { favorites, toggle } = useFavorites();
   const liked = favorites.has(slug);
@@ -696,8 +695,39 @@ function CompactGameActions({ slug, onFullscreen, directUrl }: {
   return <div class="compact-game-actions">
     <button onClick={() => toggle(slug)} title={liked ? "Remove favorite" : "Add favorite"}>{liked ? "♥" : "♡"}</button>
     <button onClick={share} title="Share game">↗</button>
-    {directUrl && <a href={directUrl} target="_blank" rel="noopener" title="Open game directly">↗</a>}
     {onFullscreen && <button onClick={onFullscreen} title="Fullscreen">⛶</button>}
+  </div>;
+}
+
+function controlChips(text: string) {
+  const source = String(text || "");
+  const tests: Array<[RegExp, string]> = [
+    [/\barrow keys?\b|\barrows?\b/i, "Arrow Keys"],
+    [/\bwasd\b/i, "WASD"],
+    [/\bmouse\b/i, "Mouse"],
+    [/\btouch\b|\btap\b/i, "Touch"],
+    [/\bspace(?:bar)?\b/i, "Space"],
+    [/\bctrl|control key\b/i, "Ctrl"],
+    [/\balt\b/i, "Alt"],
+    [/\bshift\b/i, "Shift"],
+    [/\benter\b/i, "Enter"],
+    [/\besc(?:ape)?\b/i, "Esc"],
+    [/\bnumber keys?\b|\b1-9\b/i, "Number Keys"],
+  ];
+  return tests.filter(([pattern]) => pattern.test(source)).map(([, label]) => label);
+}
+
+function ControlGuide({ text }: { text: string }) {
+  const chips = controlChips(text);
+  return <div class="control-guide">
+    <div class="control-guide-head">
+      <span class="control-guide-icon">⌨</span>
+      <div><strong>Controls & How to Play</strong><small>Game controls</small></div>
+    </div>
+    <p>{text}</p>
+    {chips.length > 0 && <div class="control-chips">
+      {chips.map((chip) => <span>{chip}</span>)}
+    </div>}
   </div>;
 }
 
@@ -890,7 +920,7 @@ function NativeGamePage({ game }: { game: Game }) {
             <strong>{game.title}</strong>
             <span>{game.badge || game.platform}</span>
           </div>
-          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} directUrl={game.externalUrl} />
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} />
         </div>
 
         {!game.externalUrl && <div class="native-tools-row">
@@ -906,8 +936,9 @@ function NativeGamePage({ game }: { game: Game }) {
           <div class="detail-mini-grid">
             <div><strong>Developer</strong><span>{game.developer}</span></div>
             <div><strong>Categories</strong><span>{categories.join(", ")}</span></div>
-            <div><strong>Controls</strong><span>{game.controls}</span></div>
+            <div><strong>Platform</strong><span>{game.platform}</span></div>
           </div>
+          <ControlGuide text={game.controls} />
         </section>
         <Comments slug={game.slug} title={game.title} />
       </section>
@@ -972,7 +1003,7 @@ function WebGamePage({ slug }: { slug: string }) {
             <strong>{game.title}</strong>
             <span>{game.category.replace(/-/g, " ")}</span>
           </div>
-          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} directUrl={game.url} />
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} />
         </div>
 
         <section class="game-details-card">
@@ -981,8 +1012,9 @@ function WebGamePage({ slug }: { slug: string }) {
           <div class="detail-mini-grid">
             <div><strong>Category</strong><span>{game.category.replace(/-/g, " ")}</span></div>
             <div><strong>Game type</strong><span>Browser Game</span></div>
-            <div><strong>How to play</strong><span>{game.instructions}</span></div>
+            <div><strong>Play mode</strong><span>In-browser</span></div>
           </div>
+          <ControlGuide text={game.instructions || "Use the controls shown inside the game."} />
         </section>
 
         {related.length > 0 && <section class="related-section compact-related">
