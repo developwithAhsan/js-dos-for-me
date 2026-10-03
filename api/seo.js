@@ -117,6 +117,13 @@ function titleCase(value = "") {
     .trim();
 }
 
+function slugForPath(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function truncate(value, max = 165) {
   const text = cleanText(value);
   if (text.length <= max) return text;
@@ -332,10 +339,16 @@ export default async function handler(req, res) {
           165
         );
         const keywords = keywordListForGame(game);
-        const categoryPath = game.category ? `/category/${game.category}/` : "/";
+        const categoryPath = game.category ? `/category/${slugForPath(game.category)}/` : "/";
         const schemas = {
           "@context": "https://schema.org",
           "@graph": [
+            {
+              "@type": "WebSite",
+              "@id": `${origin}/#website`,
+              url: `${origin}/`,
+              name: SITE_NAME,
+            },
             {
               "@type": "WebPage",
               "@id": `${canonical}#webpage`,
@@ -415,6 +428,12 @@ export default async function handler(req, res) {
         const schema = {
           "@context": "https://schema.org",
           "@graph": [
+            {
+              "@type": "WebSite",
+              "@id": `${origin}/#website`,
+              url: `${origin}/`,
+              name: SITE_NAME,
+            },
             {
               "@type": "CollectionPage",
               "@id": `${canonical}#collection`,
