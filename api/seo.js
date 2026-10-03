@@ -97,6 +97,21 @@ const NATIVE_COLLECTIONS = {
   },
 };
 
+function nativeTagSummary(slug) {
+  const items = Object.entries(NATIVE)
+    .filter(([, game]) => (game.tags || []).some((tag) => slugForPath(tag) === slug))
+    .map(([gameSlug, game]) => ({ slug: gameSlug, title: game.title, image: game.image }));
+  if (!items.length) return null;
+  const name = titleCase(slug);
+  return {
+    slug,
+    name,
+    description: `Play ${name} games online and discover related browser and classic PC games on PlayZone.`,
+    count: items.length,
+    items,
+  };
+}
+
 function esc(value = "") {
   return String(value).replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
@@ -394,7 +409,7 @@ export default async function handler(req, res) {
           bodyText: game.instructions
             ? `${description} How to play: ${truncate(game.instructions, 180)}`
             : description,
-          tags: [...tags, categoryName],
+          tags,
           related: [],
         });
       }
@@ -406,8 +421,11 @@ export default async function handler(req, res) {
           ...NATIVE_COLLECTIONS[slug],
           count: NATIVE_COLLECTIONS[slug].items.length,
         };
+      } else if (kind === "tag") {
+        summary = nativeTagSummary(slug)
+          || await fetchJson(`${origin}/catalog/seo/tags/${encodeURIComponent(slug)}.json`, null);
       } else {
-        summary = await fetchJson(`${origin}/catalog/seo/${kind === "category" ? "categories" : "tags"}/${encodeURIComponent(slug)}.json`, null);
+        summary = await fetchJson(`${origin}/catalog/seo/categories/${encodeURIComponent(slug)}.json`, null);
       }
 
       if (!summary) {
