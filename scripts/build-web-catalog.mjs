@@ -373,11 +373,20 @@ const nativeCategoryUrls = [
 const nativeTagUrls = [
   "3d",
   "open-world",
-  "browser-native",
+  "browser-game",
   "action",
   "racing",
+  "cars",
   "fps",
   "arcade",
+  "classic-pc",
+  "retro",
+  "shooter",
+  "simulation",
+  "strategy",
+  "city-building",
+  "adventure",
+  "platform",
 ];
 
 function xmlEscape(value) {
