@@ -11,6 +11,35 @@ const CACHE_NAME = "dos-arcade-bundles-v2";
 const FAVORITES_KEY = "dos-arcade-favorites";
 const INSTALL_START_KEY = "playzone-install-start";
 const INSTALL_DONE_KEY = "playzone-pwa-installed";
+const RECENT_KEY = "playzone-recent-games";
+
+type RecentGame = {
+  slug: string;
+  title: string;
+  image: string;
+  category: string;
+  tags: string[];
+  collections: string[];
+  type: string;
+  isNew?: boolean;
+  playedAt: number;
+};
+
+function readRecentGames(): RecentGame[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function recordRecentGame(game: Omit<RecentGame, "playedAt">) {
+  const next = [
+    { ...game, playedAt: Date.now() },
+    ...readRecentGames().filter((item) => item.slug !== game.slug),
+  ].slice(0, 40);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+}
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -112,7 +141,8 @@ type Route =
   | { type: "game"; slug: string }
   | { type: "category"; slug: string }
   | { type: "tag"; slug: string }
-  | { type: "favorites" };
+  | { type: "favorites" }
+  | { type: "recent" };
 
 function routeFromLocation(): Route {
   const path = decodeURIComponent(location.pathname);
@@ -123,6 +153,7 @@ function routeFromLocation(): Route {
   match = path.match(/^\/tag\/([^/]+)\/?$/);
   if (match) return { type: "tag", slug: match[1] };
   if (/^\/favorites\/?$/.test(path)) return { type: "favorites" };
+  if (/^\/recent\/?$/.test(path)) return { type: "recent" };
   return { type: "home" };
 }
 
@@ -711,6 +742,7 @@ function GameSidebar() {
     </nav>
     <div class="side-divider" />
     <div class="side-library">
+      <button onClick={() => go("/recent/")}><span class="side-icon">◷</span><strong>Recently Played</strong></button>
       <button onClick={() => go("/favorites/")}><span class="side-icon">♡</span><strong>Liked Games</strong></button>
       <button onClick={() => go("/")}><span class="side-icon">⌂</span><strong>Recommended</strong></button>
     </div>
@@ -780,9 +812,10 @@ function SiteInstallButton({ compact = false }: { compact?: boolean }) {
   </span>;
 }
 
-function CompactGameActions({ slug, onFullscreen }: {
+function CompactGameActions({ slug, onFullscreen, onRestart }: {
   slug: string;
   onFullscreen?: () => void;
+  onRestart?: () => void;
 }) {
   const { favorites, toggle } = useFavorites();
   const liked = favorites.has(slug);
@@ -795,6 +828,7 @@ function CompactGameActions({ slug, onFullscreen }: {
   return <div class="compact-game-actions">
     <button onClick={() => toggle(slug)} title={liked ? "Remove favorite" : "Add favorite"}>{liked ? "♥" : "♡"}</button>
     <button onClick={share} title="Share game">↗</button>
+    {onRestart && <button onClick={onRestart} title="Reload game">↻</button>}
     {onFullscreen && <button onClick={onFullscreen} title="Fullscreen">⛶</button>}
   </div>;
 }
@@ -815,6 +849,16 @@ function controlChips(text: string) {
     [/\bnumber keys?\b|\b1-9\b/i, "Number Keys"],
   ];
   return tests.filter(([pattern]) => pattern.test(source)).map(([, label]) => label);
+}
+
+function GameFeatureChips() {
+  return <div class="game-feature-chips">
+    <span>✓ Play in Browser</span>
+    <span>♡ Save Locally</span>
+    <span>⇩ Installable</span>
+    <span>⌨ Controls Included</span>
+    <span>◎ No Account Required</span>
+  </div>;
 }
 
 function ControlGuide({ text }: { text: string }) {
@@ -890,6 +934,16 @@ function NativeGamePage({ game }: { game: Game }) {
 
   useEffect(() => {
     updateSeo(`${game.title} Online — Play in Browser`, game.description, `/games/${game.slug}/`, game.image);
+    recordRecentGame({
+      slug: game.slug,
+      title: game.title,
+      image: game.image || "",
+      category: taxonomySlug(nativeCategories(game)[0] || "pc-browser-classics"),
+      tags: nativeTags(game).map(taxonomySlug),
+      collections: nativeCategories(game).map(taxonomySlug),
+      type: "native",
+      isNew: false,
+    });
     return () => { props?.stop().catch(() => undefined); };
   }, [game.slug]);
 
@@ -994,6 +1048,23 @@ function NativeGamePage({ game }: { game: Game }) {
     }
   };
 
+  const restart = async () => {
+    if (game.engine === "external") {
+      setExternalStarted(false);
+      setRunning(false);
+      window.setTimeout(() => {
+        setExternalStarted(true);
+        setRunning(true);
+      }, 60);
+      return;
+    }
+    if (props) await props.stop().catch(() => undefined);
+    setProps(null);
+    setRunning(false);
+    setProgress(0);
+    installAndPlay();
+  };
+
   const categories = nativeCategories(game);
   const tags = [...nativeTags(game), ...categories, game.platform];
 
@@ -1021,7 +1092,7 @@ function NativeGamePage({ game }: { game: Game }) {
             <strong>{game.title}</strong>
             <span>{game.badge || game.platform}</span>
           </div>
-          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} />
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} onRestart={restart} />
         </div>
 
         {!game.externalUrl && <div class="native-tools-row">
@@ -1034,6 +1105,7 @@ function NativeGamePage({ game }: { game: Game }) {
         <section class="game-details-card">
           <h2>Game details</h2>
           <p>{game.description}</p>
+          <GameFeatureChips />
           <div class="detail-mini-grid">
             <div><strong>Developer</strong><span>{game.developer}</span></div>
             <div><strong>Categories</strong><span>{categories.join(", ")}</span></div>
@@ -1051,6 +1123,7 @@ function NativeGamePage({ game }: { game: Game }) {
 function WebGamePage({ slug }: { slug: string }) {
   const [game, setGame] = useState<WebGame | null>(null);
   const [related, setRelated] = useState<WebIndexGame[]>([]);
+  const [frameVersion, setFrameVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -1061,6 +1134,17 @@ function WebGamePage({ slug }: { slug: string }) {
       if (cancelled) return;
       setGame(detail);
       if (!detail) return;
+
+      recordRecentGame({
+        slug: detail.slug,
+        title: detail.title,
+        image: detail.image,
+        category: detail.category,
+        tags: detail.tags,
+        collections: detail.collections,
+        type: detail.type || "browser",
+        isNew: detail.isNew,
+      });
 
       updateSeo(`${detail.title} Online — Play Free in Browser`, detail.description, `/games/${detail.slug}/`, detail.image);
 
@@ -1089,6 +1173,7 @@ function WebGamePage({ slug }: { slug: string }) {
   ];
 
   const fullscreen = () => (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.();
+  const restart = () => setFrameVersion((value) => value + 1);
 
   return <main class="play-page">
     <div class="play-shell">
@@ -1097,7 +1182,7 @@ function WebGamePage({ slug }: { slug: string }) {
       <section class="play-main">
         <GameTopActions slug={game.slug} onFullscreen={fullscreen} />
         <div class="play-stage web-play-stage">
-          <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" loading="eager" />
+          <iframe key={frameVersion} class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" loading="eager" />
         </div>
 
         <div class="play-bottom-bar">
@@ -1105,12 +1190,13 @@ function WebGamePage({ slug }: { slug: string }) {
             <strong>{game.title}</strong>
             <span>{game.category.replace(/-/g, " ")}</span>
           </div>
-          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} />
+          <CompactGameActions slug={game.slug} onFullscreen={fullscreen} onRestart={restart} />
         </div>
 
         <section class="game-details-card">
           <h2>Game details</h2>
           <p>{game.description}</p>
+          <GameFeatureChips />
           <div class="detail-mini-grid">
             <div><strong>Category</strong><span>{game.category.replace(/-/g, " ")}</span></div>
             <div><strong>Game type</strong><span>Browser Game</span></div>
@@ -1184,6 +1270,49 @@ function ListingPage({ kind, slug }: { kind: "category" | "tag"; slug: string })
       </div>
       {visible < webMatches.length && <div class="load-more"><button class="primary" onClick={() => setVisible((value) => value + 72)}>Load more</button></div>}
     </>}
+  </main>;
+}
+
+function RecentPage() {
+  const [recent, setRecent] = useState<RecentGame[]>([]);
+  useEffect(() => {
+    setRecent(readRecentGames());
+    updateSeo("Recently Played Games — PlayZone", "Games recently played on this device.", "/recent/");
+  }, []);
+
+  const clearRecent = () => {
+    localStorage.removeItem(RECENT_KEY);
+    setRecent([]);
+  };
+
+  return <main class="portal-shell listing-page">
+    <button class="back" onClick={() => go("/")}>← Back to home</button>
+    <div class="listing-title-row">
+      <div>
+        <div class="eyebrow">Your device</div>
+        <h1>Recently Played</h1>
+      </div>
+      {recent.length > 0 && <button class="secondary" onClick={clearRecent}>Clear history</button>}
+    </div>
+    {recent.length === 0
+      ? <p class="section-sub">Games you play will appear here automatically.</p>
+      : <div class="game-grid">
+          {recent.map((item) => {
+            const native = getGame(item.slug);
+            if (native) return <NativeCard game={native} />;
+            const web: WebIndexGame = {
+              slug: item.slug,
+              title: item.title,
+              image: item.image,
+              category: item.category,
+              tags: item.tags,
+              collections: item.collections,
+              type: item.type,
+              isNew: item.isNew,
+            };
+            return <WebCard game={web} />;
+          })}
+        </div>}
   </main>;
 }
 
@@ -1271,6 +1400,8 @@ function App() {
     content = <ListingPage kind="tag" slug={route.slug} />;
   } else if (route.type === "favorites") {
     content = <FavoritesPage />;
+  } else if (route.type === "recent") {
+    content = <RecentPage />;
   }
 
   return <>
@@ -1356,6 +1487,7 @@ function App() {
         <div class="footer-link-column">
           <strong>Your Arcade</strong>
           <button onClick={() => go("/favorites/")}>Favorite Games</button>
+          <button onClick={() => go("/recent/")}>Recently Played</button>
           <button onClick={() => searchRef.current?.focus()}>Search Games</button>
           <button onClick={openCategories}>Browse Categories</button>
           <button onClick={() => requestPlayZoneInstall("/")}>Install PlayZone</button>
