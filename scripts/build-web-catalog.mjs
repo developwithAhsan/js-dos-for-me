@@ -152,6 +152,9 @@ await fs.mkdir(path.join(OUT, "chunks"), { recursive: true });
 await fs.mkdir(path.join(OUT, "categories"), { recursive: true });
 await fs.mkdir(path.join(OUT, "tags"), { recursive: true });
 await fs.mkdir(path.join(OUT, "search"), { recursive: true });
+await fs.mkdir(path.join(OUT, "seo", "categories"), { recursive: true });
+await fs.mkdir(path.join(OUT, "seo", "tags"), { recursive: true });
+await fs.mkdir(path.resolve("public/sitemaps"), { recursive: true });
 
 let sourceGames = [];
 try {
@@ -277,17 +280,47 @@ await fs.writeFile(path.join(OUT, "home.json"), JSON.stringify(homeCatalog));
 
 // Per-category and per-tag files keep homepage/listing navigation fast without
 // downloading the entire 38k-game index.
-for (const collection of curatedCollections) {
-  const items = index.filter((game) => game.collections.includes(collection.slug));
-  await fs.writeFile(path.join(OUT, "categories", `${collection.slug}.json`), JSON.stringify(items));
-}
 for (const category of categories.values()) {
   const items = index.filter((game) => game.category === category.slug);
   await fs.writeFile(path.join(OUT, "categories", `${category.slug}.json`), JSON.stringify(items));
+  await fs.writeFile(
+    path.join(OUT, "seo", "categories", `${category.slug}.json`),
+    JSON.stringify({
+      slug: category.slug,
+      name: category.name,
+      description: `Play ${category.name} online in your browser. Discover popular titles, new releases and related games on PlayZone.`,
+      count: items.length,
+      items: items.slice(0, 24),
+    })
+  );
+}
+for (const collection of curatedCollections) {
+  const items = index.filter((game) => game.collections.includes(collection.slug));
+  await fs.writeFile(path.join(OUT, "categories", `${collection.slug}.json`), JSON.stringify(items));
+  await fs.writeFile(
+    path.join(OUT, "seo", "categories", `${collection.slug}.json`),
+    JSON.stringify({
+      slug: collection.slug,
+      name: collection.name,
+      description: collection.description,
+      count: items.length,
+      items: items.slice(0, 24),
+    })
+  );
 }
 for (const tag of tags.values()) {
   const items = index.filter((game) => game.tags.includes(tag.slug));
   await fs.writeFile(path.join(OUT, "tags", `${tag.slug}.json`), JSON.stringify(items));
+  await fs.writeFile(
+    path.join(OUT, "seo", "tags", `${tag.slug}.json`),
+    JSON.stringify({
+      slug: tag.slug,
+      name: tag.name,
+      description: `Browse ${tag.name} games and play them online instantly on PlayZone.`,
+      count: items.length,
+      items: items.slice(0, 24),
+    })
+  );
 }
 
 // Lightweight search shards. A game is added only to buckets matching the
@@ -332,6 +365,7 @@ const nativeSlugs = [
   "gta-iii-browser", "gta-vice-city-browser"
 ];
 const nativeCategoryUrls = [
+  "pc-browser-classics",
   "browser-native-games",
   "open-world-3d-classics",
   "dos-classics",
@@ -345,19 +379,59 @@ const nativeTagUrls = [
   "fps",
   "arcade",
 ];
-const urls = [
-  `${SITE}/category/pc-browser-classics/`,
-  `${SITE}/category/browser-native-games/`,
+
+function xmlEscape(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function sitemapXml(urls) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) =>
+    `  <url><loc>${xmlEscape(url)}</loc></url>`).join("\n")}\n</urlset>\n`;
+}
+
+const generatedDate = new Date().toISOString().slice(0, 10);
+const sitemapDir = path.resolve("public/sitemaps");
+const sitemapFiles = [];
+
+const gameUrls = [
   ...nativeSlugs.map((slug) => `${SITE}/games/${slug}/`),
   ...full.map((game) => `${SITE}/games/${game.slug}/`),
+];
+const gameChunkSize = 5000;
+for (let i = 0; i < gameUrls.length; i += gameChunkSize) {
+  const number = String(Math.floor(i / gameChunkSize) + 1).padStart(3, "0");
+  const fileName = `games-${number}.xml`;
+  await fs.writeFile(path.join(sitemapDir, fileName), sitemapXml(gameUrls.slice(i, i + gameChunkSize)));
+  sitemapFiles.push(fileName);
+}
+
+const categoryUrls = [...new Set([
   ...nativeCategoryUrls.map((slug) => `${SITE}/category/${slug}/`),
   ...meta.categories.map((category) => `${SITE}/category/${category.slug}/`),
   ...meta.rawCategories.map((category) => `${SITE}/category/${category.slug}/`),
+])];
+await fs.writeFile(path.join(sitemapDir, "categories.xml"), sitemapXml(categoryUrls));
+sitemapFiles.push("categories.xml");
+
+const tagUrls = [...new Set([
   ...nativeTagUrls.map((slug) => `${SITE}/tag/${slug}/`),
   ...meta.tags.map((tag) => `${SITE}/tag/${tag.slug}/`),
-];
-const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) =>
-  `  <url><loc>${url.replace(/&/g, "&amp;")}</loc></url>`).join("\n")}\n</urlset>\n`;
-await fs.writeFile(path.resolve("public/sitemap.xml"), xml);
+])];
+await fs.writeFile(path.join(sitemapDir, "tags.xml"), sitemapXml(tagUrls));
+sitemapFiles.push("tags.xml");
 
-console.log(`Built catalog: ${full.length} games, ${meta.categories.length} categories, ${meta.tags.length} tags`);
+await fs.writeFile(path.join(sitemapDir, "pages.xml"), sitemapXml([SITE + "/"]));
+sitemapFiles.push("pages.xml");
+
+const sitemapIndex = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapFiles.map((fileName) =>
+  `  <sitemap><loc>${SITE}/sitemaps/${fileName}</loc><lastmod>${generatedDate}</lastmod></sitemap>`).join("\n")}\n</sitemapindex>\n`;
+await fs.writeFile(path.resolve("public/sitemap.xml"), sitemapIndex);
+
+console.log(
+  `Built catalog: ${full.length} games, ${meta.categories.length} curated categories, ${meta.rawCategories.length} source categories, ${meta.tags.length} tags, ${sitemapFiles.length} sitemap files`
+);
