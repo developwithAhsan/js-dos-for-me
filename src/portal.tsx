@@ -481,6 +481,7 @@ const featuredTaxonomy = [
   { label: "Adventure & RPG", slug: "adventure-rpg" },
   { label: "Girls & Lifestyle", slug: "girls-lifestyle" },
   { label: "Multiplayer", slug: "multiplayer" },
+  { label: "IO & Multiplayer", slug: "io-multiplayer" },
   { label: "Arcade & Classic", slug: "arcade-classic" },
   { label: "Board & Puzzle", slug: "board-puzzle" },
   { label: "Sports", slug: "sports" },
@@ -717,6 +718,7 @@ const categoryIcons: Record<string, string> = {
   "sports": "⚽",
   "board-puzzle": "🧩",
   "multiplayer": "◉",
+  "io-multiplayer": "◎",
   "arcade-classic": "👾",
   "strategy-defense": "♞",
   "management-simulation": "⚗",
@@ -1425,6 +1427,7 @@ function App() {
           <button onClick={() => go("/category/new-games/")}>New</button>
           <button onClick={() => go("/category/driving-racing/")}>Racing</button>
           <button onClick={() => go("/category/shooting/")}>Shooting</button>
+          <button onClick={() => go("/category/io-multiplayer/")}>IO Games</button>
           <button onClick={() => go("/category/arcade-classic/")}>Arcade</button>
         </nav>
 
@@ -1481,6 +1484,7 @@ function App() {
           <button onClick={() => go("/category/driving-racing/")}>Driving & Racing</button>
           <button onClick={() => go("/category/shooting/")}>Shooting</button>
           <button onClick={() => go("/category/multiplayer/")}>Multiplayer</button>
+          <button onClick={() => go("/category/io-multiplayer/")}>IO & Multiplayer</button>
         </div>
 
         <div class="footer-link-column">
