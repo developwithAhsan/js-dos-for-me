@@ -1133,11 +1133,13 @@ function WebGamePage({ slug }: { slug: string }) {
   const [game, setGame] = useState<WebGame | null>(null);
   const [related, setRelated] = useState<WebIndexGame[]>([]);
   const [frameVersion, setFrameVersion] = useState(0);
+  const [frameReady, setFrameReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setGame(null);
     setRelated([]);
+    setFrameReady(false);
 
     loadWebGame(slug).then((detail) => {
       if (cancelled) return;
@@ -1182,7 +1184,14 @@ function WebGamePage({ slug }: { slug: string }) {
   ];
 
   const fullscreen = () => (document.querySelector(".html5-frame") as HTMLIFrameElement | null)?.requestFullscreen?.();
-  const restart = () => setFrameVersion((value) => value + 1);
+  const restart = () => {
+    setFrameReady(false);
+    setFrameVersion((value) => value + 1);
+  };
+  let sourceHost = "browser game";
+  try {
+    sourceHost = new URL(game.url).hostname.replace(/^www\./, "");
+  } catch {}
 
   return <main class="play-page">
     <div class="play-shell">
@@ -1190,8 +1199,37 @@ function WebGamePage({ slug }: { slug: string }) {
 
       <section class="play-main">
         <GameTopActions slug={game.slug} onFullscreen={fullscreen} />
-        <div class="play-stage web-play-stage">
-          <iframe key={frameVersion} class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" loading="eager" />
+        <div class="embedded-browser">
+          <div class="embedded-browser-bar">
+            <div class="browser-window-dots" aria-hidden="true"><span /><span /><span /></div>
+            <div class="browser-address">
+              <span class="browser-lock">●</span>
+              <span class="browser-address-title">{game.title}</span>
+              <small>{sourceHost}</small>
+            </div>
+            <button class="browser-reload" onClick={restart} title="Reload game" aria-label="Reload game">↻</button>
+          </div>
+          <div class="play-stage web-play-stage">
+            {!frameReady && <div class="browser-game-poster">
+              <img src={game.image} alt={`${game.title} game preview`} />
+              <div class="browser-game-poster-shade">
+                <span class="browser-live-chip">Browser game</span>
+                <strong>{game.title}</strong>
+                <small>Loading game inside PlayZone…</small>
+              </div>
+            </div>}
+            <iframe
+              key={frameVersion}
+              class={`html5-frame ${frameReady ? "ready" : ""}`}
+              src={game.url}
+              title={game.title}
+              allow="fullscreen; autoplay; gamepad"
+              allowFullScreen
+              scrolling="no"
+              loading="eager"
+              onLoad={() => setFrameReady(true)}
+            />
+          </div>
         </div>
 
         <div class="play-bottom-bar">
