@@ -926,6 +926,7 @@ function Comments({ slug, title }: { slug: string; title: string }) {
 
 function NativeGamePage({ game }: { game: Game }) {
   const playerRef = useRef<HTMLDivElement>(null);
+  const propsRef = useRef<DosProps | null>(null);
   const [props, setProps] = useState<DosProps | null>(null);
   const [status, setStatus] = useState(game.engine === "external" ? "Ready to launch" : game.availability === "playable" ? "Ready to install" : "Use your own .jsdos bundle");
   const [progress, setProgress] = useState(0);
@@ -944,7 +945,10 @@ function NativeGamePage({ game }: { game: Game }) {
       type: "native",
       isNew: false,
     });
-    return () => { props?.stop().catch(() => undefined); };
+    return () => {
+      propsRef.current?.stop().catch(() => undefined);
+      propsRef.current = null;
+    };
   }, [game.slug]);
 
   const launchBundle = async (url: string) => {
@@ -969,6 +973,7 @@ function NativeGamePage({ game }: { game: Game }) {
           }
         }
       });
+      propsRef.current = next;
       setProps(next);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to start game");
@@ -1003,6 +1008,7 @@ function NativeGamePage({ game }: { game: Game }) {
           }
         }
       });
+      propsRef.current = next;
       setProps(next);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to start demo");
@@ -1059,6 +1065,7 @@ function NativeGamePage({ game }: { game: Game }) {
       return;
     }
     if (props) await props.stop().catch(() => undefined);
+    propsRef.current = null;
     setProps(null);
     setRunning(false);
     setProgress(0);
@@ -1099,7 +1106,7 @@ function NativeGamePage({ game }: { game: Game }) {
           <button onClick={() => props?.save()} disabled={!props}>Save</button>
           <button onClick={() => props?.setPaused(false)} disabled={!props}>Resume</button>
           <label class="bundle-import">Import bundle<input type="file" accept=".jsdos,.zip,application/zip" onChange={upload as any} /></label>
-          <button onClick={() => { props?.stop(); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
+          <button onClick={() => { props?.stop(); propsRef.current = null; setProps(null); setRunning(false); setStatus("Stopped"); }} disabled={!props}>Stop</button>
         </div>}
 
         <section class="game-details-card">
