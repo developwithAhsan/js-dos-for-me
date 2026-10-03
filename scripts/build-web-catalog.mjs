@@ -154,6 +154,7 @@ await fs.mkdir(path.join(OUT, "tags"), { recursive: true });
 await fs.mkdir(path.join(OUT, "search"), { recursive: true });
 await fs.mkdir(path.join(OUT, "seo", "categories"), { recursive: true });
 await fs.mkdir(path.join(OUT, "seo", "tags"), { recursive: true });
+await fs.rm(path.resolve("public/sitemaps"), { recursive: true, force: true });
 await fs.mkdir(path.resolve("public/sitemaps"), { recursive: true });
 
 let sourceGames = [];
