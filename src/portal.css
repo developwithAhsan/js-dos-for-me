@@ -3178,3 +3178,46 @@ body {
     font-size:9px;
   }
 }
+
+
+/* Game completeness polish */
+.game-feature-chips {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:12px 0 0;
+}
+.game-feature-chips span {
+  min-height:24px;
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface);
+  color:var(--muted);
+  font-size:9px;
+  font-weight:750;
+}
+.listing-title-row {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:14px;
+}
+.listing-title-row h1 {
+  margin-bottom:0;
+}
+@media (max-width:560px) {
+  .game-feature-chips {
+    gap:5px;
+  }
+  .game-feature-chips span {
+    font-size:8px;
+    padding:4px 7px;
+  }
+  .listing-title-row {
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
