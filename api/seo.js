@@ -193,11 +193,12 @@ function keywordListForGame(game) {
 }
 
 function keywordListForCollection(name, items = []) {
+  const baseName = String(name).replace(/\s+Games$/i, "").trim();
   return [...new Set([
     name,
-    `${name} games`,
-    `play ${name} online`,
-    `free ${name} games`,
+    `${baseName} games`,
+    `play ${baseName} games online`,
+    `free ${baseName} games`,
     ...items.slice(0, 8).map((item) => item.title).filter(Boolean),
     "free online games",
     "browser games",
@@ -452,6 +453,8 @@ export default async function handler(req, res) {
           165
         );
         const keywords = keywordListForCollection(name, summary.items || []);
+        const baseName = name.replace(/\s+Games$/i, "").trim();
+        const pageTitle = `${baseName} Games Online | ${SITE_NAME}`;
         const related = (summary.items || []).map((item) => ({
           slug: item.slug,
           title: item.title,
@@ -470,7 +473,7 @@ export default async function handler(req, res) {
               "@type": "CollectionPage",
               "@id": `${canonical}#collection`,
               url: canonical,
-              name: `${name} Games Online | ${SITE_NAME}`,
+              name: pageTitle,
               description,
               isPartOf: { "@id": `${origin}/#website` },
               mainEntity: {
@@ -491,7 +494,7 @@ export default async function handler(req, res) {
           ],
         };
         result = shell({
-          title: `${name} Games Online | ${SITE_NAME}`,
+          title: pageTitle,
           description,
           canonical,
           image: related[0]?.image ? absoluteUrl(origin, related[0].image) : `${origin}/playzone-logo.svg`,
