@@ -354,7 +354,21 @@ export default async function handler(req, res) {
           165
         );
         const keywords = keywordListForGame(game);
-        const categoryPath = game.category ? `/category/${slugForPath(game.category)}/` : "/";
+        const categorySlug = slugForPath(game.category || game.collections?.[0] || "");
+        const categoryPath = categorySlug ? `/category/${categorySlug}/` : "/";
+        let related = [];
+        if (categorySlug) {
+          if (NATIVE_COLLECTIONS[categorySlug]) {
+            related = NATIVE_COLLECTIONS[categorySlug].items
+              .filter((item) => item.slug !== slug)
+              .slice(0, 16);
+          } else {
+            const relatedSummary = await fetchJson(`${origin}/catalog/seo/categories/${categorySlug}.json`, null);
+            related = (relatedSummary?.items || [])
+              .filter((item) => item.slug !== slug)
+              .slice(0, 16);
+          }
+        }
         const schemas = {
           "@context": "https://schema.org",
           "@graph": [
@@ -410,7 +424,7 @@ export default async function handler(req, res) {
             ? `${description} How to play: ${truncate(game.instructions, 180)}`
             : description,
           tags,
-          related: [],
+          related,
         });
       }
     } else if (kind === "category" || kind === "tag") {
