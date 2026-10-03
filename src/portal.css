@@ -2974,3 +2974,83 @@ body {
   width:100%;
   height:100%;
 }
+
+
+/* Per-game controls guide */
+.control-guide {
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:color-mix(in srgb,var(--surface) 78%,var(--surface-2));
+}
+.control-guide-head {
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.control-guide-icon {
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  background:var(--surface-3);
+  color:var(--text);
+  font-size:17px;
+}
+.control-guide-head > div {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.control-guide-head strong {
+  font-size:12px;
+  line-height:1.2;
+}
+.control-guide-head small {
+  color:var(--muted-2);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.control-guide > p {
+  margin:9px 0 0;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.55;
+}
+.control-chips {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.control-chips span {
+  min-height:25px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px 8px;
+  border:1px solid var(--line);
+  border-bottom-color:var(--line-strong);
+  border-radius:7px;
+  background:var(--surface-solid, var(--surface));
+  color:var(--text);
+  box-shadow:0 1px 2px rgba(0,0,0,.06);
+  font:700 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (max-width:560px) {
+  .control-guide {
+    padding:10px;
+  }
+  .control-guide > p {
+    font-size:10px;
+  }
+  .control-chips span {
+    min-height:23px;
+    font-size:8px;
+  }
+}
