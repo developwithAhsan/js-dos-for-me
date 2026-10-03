@@ -8,8 +8,59 @@ import { games, genres, getGame, type Game } from "./games";
 import "./portal.css";
 
 const CACHE_NAME = "dos-arcade-bundles-v2";
-const PROFILE_KEY = "dos-arcade-device-profile";
 const FAVORITES_KEY = "dos-arcade-favorites";
+const INSTALL_START_KEY = "playzone-install-start";
+const INSTALL_DONE_KEY = "playzone-pwa-installed";
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform?: string }>;
+};
+
+let deferredInstallPrompt: InstallPromptEvent | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event as InstallPromptEvent;
+    window.dispatchEvent(new Event("playzone-install-ready"));
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    localStorage.setItem(INSTALL_DONE_KEY, "1");
+    window.dispatchEvent(new Event("playzone-installed"));
+  });
+}
+
+function isStandaloneMode() {
+  return window.matchMedia?.("(display-mode: standalone)").matches
+    || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+}
+
+async function requestPlayZoneInstall(startPath = "/") {
+  localStorage.setItem(INSTALL_START_KEY, startPath);
+
+  if (isStandaloneMode()) {
+    return "PlayZone is installed. This game is set as your launch game.";
+  }
+
+  if (deferredInstallPrompt) {
+    const promptEvent = deferredInstallPrompt;
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    if (choice.outcome === "accepted") {
+      deferredInstallPrompt = null;
+      localStorage.setItem(INSTALL_DONE_KEY, "1");
+      return "PlayZone installed. This game is saved for quick launch.";
+    }
+    return "Install was cancelled.";
+  }
+
+  const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  return isIOS
+    ? "On iPhone/iPad: tap Share, then Add to Home Screen."
+    : "Use your browser menu and choose Install app or Add to Home screen.";
+}
 
 type WebIndexGame = {
   slug: string;
@@ -680,6 +731,55 @@ function GameTagPanel({ tags }: { tags: string[] }) {
   </aside>;
 }
 
+function GameTopActions({ slug, onFullscreen }: { slug: string; onFullscreen?: () => void }) {
+  const { favorites, toggle } = useFavorites();
+  const saved = favorites.has(slug);
+  const [message, setMessage] = useState("");
+
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: document.title, url: location.href });
+      else {
+        await navigator.clipboard.writeText(location.href);
+        setMessage("Game link copied.");
+      }
+    } catch {}
+  };
+
+  const install = async () => {
+    const result = await requestPlayZoneInstall(`/games/${slug}/`);
+    setMessage(result);
+  };
+
+  return <div class="game-top-actions">
+    <button class={saved ? "saved" : ""} onClick={() => toggle(slug)}>
+      <span>{saved ? "♥" : "♡"}</span>{saved ? "Saved" : "Save Game"}
+    </button>
+    <button class="install-action" onClick={install}>
+      <span>⇩</span>Install
+    </button>
+    {onFullscreen && <button onClick={onFullscreen}><span>⛶</span>Fullscreen</button>}
+    <button onClick={share}><span>↗</span>Share</button>
+    <span class="game-action-note">No account required</span>
+    {message && <div class="game-action-feedback" role="status">{message}</div>}
+  </div>;
+}
+
+function SiteInstallButton({ compact = false }: { compact?: boolean }) {
+  const [message, setMessage] = useState("");
+  const install = async () => {
+    const result = await requestPlayZoneInstall("/");
+    setMessage(result);
+    if (compact && result) window.setTimeout(() => setMessage(""), 3500);
+  };
+  return <span class={compact ? "site-install-wrap compact" : "site-install-wrap"}>
+    <button class="site-install-button" onClick={install} title="Install PlayZone">
+      <span>⇩</span>{compact ? "" : "Install"}
+    </button>
+    {message && <span class="site-install-feedback">{message}</span>}
+  </span>;
+}
+
 function CompactGameActions({ slug, onFullscreen }: {
   slug: string;
   onFullscreen?: () => void;
@@ -901,6 +1001,7 @@ function NativeGamePage({ game }: { game: Game }) {
     <div class="play-shell">
       <GameSidebar />
       <section class="play-main">
+        <GameTopActions slug={game.slug} onFullscreen={fullscreen} />
         <div class="play-stage">
           {game.engine === "external" && externalStarted && game.externalUrl
             ? <iframe class="html5-frame" src={game.externalUrl} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen />
@@ -994,6 +1095,7 @@ function WebGamePage({ slug }: { slug: string }) {
       <GameSidebar />
 
       <section class="play-main">
+        <GameTopActions slug={game.slug} onFullscreen={fullscreen} />
         <div class="play-stage web-play-stage">
           <iframe class="html5-frame" src={game.url} title={game.title} allow="fullscreen; autoplay; gamepad" allowFullScreen scrolling="no" loading="eager" />
         </div>
@@ -1104,57 +1206,10 @@ function FavoritesPage() {
   </main>;
 }
 
-function AccountModal({ close }: { close: () => void }) {
-  const stored = (() => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; } })();
-  const [mode, setMode] = useState<"signin" | "signup">(stored ? "signin" : "signup");
-  const [name, setName] = useState(stored?.name || "");
-  const [email, setEmail] = useState(stored?.email || "");
-  const [message, setMessage] = useState("");
-
-  const submit = () => {
-    if (!email.includes("@")) return setMessage("Enter a valid email address.");
-    if (mode === "signup") {
-      if (!name.trim()) return setMessage("Enter a display name.");
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase() }));
-      setMessage("Device profile created.");
-      setTimeout(close, 350);
-      return;
-    }
-    if (!stored || stored.email !== email.trim().toLowerCase()) {
-      setMessage("No matching device profile found. Create one first.");
-      return;
-    }
-    setMessage("Signed in on this device.");
-    setTimeout(close, 350);
-  };
-
-  return <div class="modal-backdrop" onClick={close}>
-    <div class="account-modal" onClick={(event) => event.stopPropagation()}>
-      <button class="modal-close" onClick={close}>×</button>
-      <div class="eyebrow">Device profile</div>
-      <h2>{mode === "signup" ? "Create profile" : "Sign in"}</h2>
-      <p>This lightweight profile is stored only in this browser. It keeps favorites ready for a future server-backed account system.</p>
-      <div class="mode-tabs">
-        <button class={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>Sign in</button>
-        <button class={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Sign up</button>
-      </div>
-      {mode === "signup" && <input value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder="Display name" />}
-      <input value={email} onInput={(e) => setEmail((e.target as HTMLInputElement).value)} placeholder="Email address" type="email" />
-      {message && <div class="account-message">{message}</div>}
-      <button class="primary" onClick={submit}>{mode === "signup" ? "Create profile" : "Sign in"}</button>
-    </div>
-  </div>;
-}
-
 function App() {
   const [route, setRoute] = useState<Route>(routeFromLocation());
-  const [accountOpen, setAccountOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const [profile, setProfile] = useState<any>(() => {
-    try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch { return null; }
-  });
-
   useEffect(() => {
     const handle = () => {
       setRoute(routeFromLocation());
@@ -1162,6 +1217,19 @@ function App() {
     };
     addEventListener("popstate", handle);
     return () => removeEventListener("popstate", handle);
+  }, []);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    }
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("launch") === "installed") {
+      const target = localStorage.getItem(INSTALL_START_KEY) || "/";
+      history.replaceState({}, "", target);
+      setRoute(routeFromLocation());
+    }
   }, []);
 
   useEffect(() => {
@@ -1179,11 +1247,6 @@ function App() {
     addEventListener("keydown", handleSearchShortcut);
     return () => removeEventListener("keydown", handleSearchShortcut);
   }, []);
-
-  const closeAccount = () => {
-    setAccountOpen(false);
-    try { setProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "null")); } catch {}
-  };
 
   const sendSearch = (value: string) => {
     setHeaderQuery(value);
@@ -1246,9 +1309,7 @@ function App() {
         <button class="top-favorite-button" onClick={() => go("/favorites/")} aria-label="Favorites" title="Favorite games">
           <span>♡</span>
         </button>
-        <button class="profile-avatar" onClick={() => setAccountOpen(true)} aria-label="Account" title={profile?.name || "Login / Sign up"}>
-          {(profile?.name || "A").slice(0, 1).toUpperCase()}
-        </button>
+        <SiteInstallButton compact />
       </div>
     </header>
 
@@ -1258,7 +1319,7 @@ function App() {
       <button onClick={() => go("/")}><span>⌂</span><small>Home</small></button>
       <button onClick={openCategories}><span>▤</span><small>Categories</small></button>
       <button onClick={() => go("/favorites/")}><span>♡</span><small>Favorites</small></button>
-      <button onClick={() => setAccountOpen(true)}><span>○</span><small>Profile</small></button>
+      <button onClick={() => requestPlayZoneInstall("/")}><span>⇩</span><small>Install</small></button>
     </nav>
 
     <footer class="site-footer">
@@ -1297,7 +1358,7 @@ function App() {
           <button onClick={() => go("/favorites/")}>Favorite Games</button>
           <button onClick={() => searchRef.current?.focus()}>Search Games</button>
           <button onClick={openCategories}>Browse Categories</button>
-          <button onClick={() => setAccountOpen(true)}>{profile?.name ? "Device Profile" : "Login / Sign up"}</button>
+          <button onClick={() => requestPlayZoneInstall("/")}>Install PlayZone</button>
         </div>
       </div>
 
@@ -1310,7 +1371,6 @@ function App() {
       </div>
     </footer>
 
-    {accountOpen && <AccountModal close={closeAccount} />}
   </>;
 }
 
