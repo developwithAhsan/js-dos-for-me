@@ -119,9 +119,17 @@ const curatedCollections = [
 ];
 
 function inferCollections(title, categoryName, tagNames, type) {
-  const text = `${title} ${categoryName} ${tagNames.join(" ")} ${type || ""}`.toLowerCase();
+  const text = `${title} ${categoryName} ${tagNames.join(" ")} ${type || ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const padded = ` ${text} `;
   const found = new Set();
-  const has = (...words) => words.some((word) => text.includes(word));
+  const has = (...words) => words.some((word) => {
+    const normalized = String(word).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    return normalized && padded.includes(` ${normalized} `);
+  });
 
   if (has("racing", "race", "car", "drift", "parking", "bike", "moto", "truck", "drive")) found.add("driving-racing");
   if (has("multiplayer", "2 player", "two player", "3 player", "io", "online pvp", "battle royale")) found.add("multiplayer");
