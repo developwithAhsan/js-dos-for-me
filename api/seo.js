@@ -177,6 +177,7 @@ async function fetchJson(url, fallback = null) {
 function keywordListForGame(game) {
   const title = cleanText(game.title);
   const category = titleCase(game.category || "Browser Games");
+  const categoryBase = category.replace(/\s+Games$/i, "").trim();
   const tags = (game.tags || []).map(titleCase).filter(Boolean);
   const collections = (game.collections || []).map(titleCase).filter(Boolean);
   return [...new Set([
@@ -184,7 +185,7 @@ function keywordListForGame(game) {
     `${title} online`,
     `play ${title}`,
     `${title} browser game`,
-    `${category} games`,
+    `${categoryBase} games`,
     ...tags,
     ...collections,
     "free online games",
