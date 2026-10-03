@@ -93,23 +93,20 @@ function inferredTags(title, categoryName, rawTags, type) {
   names.add("Browser Game");
   names.add("Online Game");
 
-  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`
+  const normalizedText = `${title} ${categoryName} ${sourceTags.join(" ")}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const padded = ` ${haystack} `;
+  const padded = ` ${normalizedText} `;
+
   for (const [needle, label] of keywordTags) {
-    const normalized = String(needle).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    const exactShort = normalized.length <= 3 || normalized === "io";
-    const matched = exactShort
-      ? padded.includes(` ${normalized} `)
-      : new RegExp(`\\b${normalized.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\  const haystack = `${title} ${categoryName} ${sourceTags.join(" ")}`.toLowerCase();
-  for (const [needle, label] of keywordTags) {
-    if (haystack.includes(needle)) names.add(label);
-    if (names.size >= 10) break;
-  }")}[a-z0-9]*\\b`, "i").test(haystack);
-    if (matched) names.add(label);
+    const normalized = String(needle)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (normalized && padded.includes(` ${normalized} `)) names.add(label);
     if (names.size >= 10) break;
   }
   return [...names].slice(0, 10);
@@ -146,13 +143,13 @@ function inferCollections(title, categoryName, tagNames, type) {
     return normalized && padded.includes(` ${normalized} `);
   });
 
-  if (has("racing", "race", "car", "drift", "parking", "bike", "moto", "truck", "drive")) found.add("driving-racing");
+  if (has("racing", "race", "car", "drift", "parking", "bike", "moto", "truck", "drive", "driving")) found.add("driving-racing");
   if (has("multiplayer", "2 player", "two player", "3 player", "io", "online pvp", "battle royale")) found.add("multiplayer");
   if (has("arcade", "classic", "retro", "runner", "platform", "jump", "snake", "tetris")) found.add("arcade-classic");
-  if (has("puzzle", "board", "card", "chess", "mahjong", "solitaire", "match", "brain", "thinking", "word")) found.add("board-puzzle");
-  if (has("shoot", "gun", "sniper", "fps", "zombie", "war", "tank", "army", "battle")) found.add("shooting");
+  if (has("puzzle", "puzzles", "board", "card", "chess", "mahjong", "solitaire", "match", "brain", "thinking", "word")) found.add("board-puzzle");
+  if (has("shoot", "shooting", "gun", "sniper", "fps", "zombie", "war", "tank", "army", "battle")) found.add("shooting");
   if (has("action", "fight", "fighting", "combat", "brawl", "ninja", "martial", "boxing", "sword")) found.add("action-fighting");
-  if (has("sport", "football", "soccer", "basket", "tennis", "cricket", "golf", "baseball", "bowling")) found.add("sports");
+  if (has("sport", "sports", "football", "soccer", "basket", "basketball", "tennis", "cricket", "golf", "baseball", "bowling")) found.add("sports");
   if (has("adventure", "rpg", "quest", "escape", "survival", "explore", "hero", "dungeon")) found.add("adventure-rpg");
   if (has("strategy", "defense", "tower", "tactical", "war", "kingdom")) found.add("strategy-defense");
   if (has("kids", "baby", "coloring", "educational", "school", "learning", "family")) found.add("kids-educational");
