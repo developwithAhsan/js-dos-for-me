@@ -79,6 +79,14 @@
     {
       "source": "/favorites",
       "destination": "/api/seo?kind=favorites"
+    },
+    {
+      "source": "/recent/",
+      "destination": "/api/seo?kind=recent"
+    },
+    {
+      "source": "/recent",
+      "destination": "/api/seo?kind=recent"
     }
   ],
   "headers": [
