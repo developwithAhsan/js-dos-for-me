@@ -3054,3 +3054,127 @@ body {
     font-size:8px;
   }
 }
+
+
+/* Game save/install actions */
+.game-top-actions {
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  min-height:44px;
+  padding:6px 8px;
+  border:1px solid var(--line);
+  border-bottom:0;
+  border-radius:11px 11px 0 0;
+  background:var(--surface);
+}
+.game-top-actions > button {
+  min-height:31px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--surface-2);
+  color:var(--text);
+  font-size:10px;
+  font-weight:800;
+  transition:transform .15s ease,background .15s ease,border-color .15s ease;
+}
+.game-top-actions > button:hover {
+  transform:translateY(-1px);
+  background:var(--surface-3);
+  border-color:var(--line-strong);
+}
+.game-top-actions > button.saved {
+  color:#e11d48;
+}
+.game-top-actions > button.install-action {
+  color:#fff;
+  border-color:#2563eb;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  box-shadow:0 5px 14px rgba(37,99,235,.18);
+}
+.game-top-actions > button span {
+  font-size:14px;
+  line-height:1;
+}
+.game-action-note {
+  margin-left:auto;
+  color:var(--muted-2);
+  font-size:9px;
+  font-weight:700;
+}
+.game-action-feedback {
+  flex-basis:100%;
+  margin-top:1px;
+  padding:6px 8px;
+  border-radius:7px;
+  background:var(--surface-2);
+  color:var(--muted);
+  font-size:9px;
+  line-height:1.4;
+}
+.site-install-wrap {
+  position:relative;
+  display:inline-flex;
+}
+.site-install-button {
+  height:34px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:0 10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface-2);
+  color:var(--text);
+  font-size:10px;
+  font-weight:800;
+}
+.site-install-wrap.compact .site-install-button {
+  width:36px;
+  padding:0;
+}
+.site-install-button:hover {
+  background:var(--surface-3);
+}
+.site-install-feedback {
+  position:absolute;
+  z-index:90;
+  top:42px;
+  right:0;
+  width:min(280px,80vw);
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface-solid, var(--surface));
+  color:var(--text);
+  box-shadow:var(--shadow);
+  font-size:10px;
+  line-height:1.4;
+}
+.play-main > .game-top-actions + .play-stage {
+  border-radius:0;
+}
+@media (max-width:640px) {
+  .game-top-actions {
+    gap:5px;
+    padding:5px 7px;
+  }
+  .game-top-actions > button {
+    flex:1 1 calc(50% - 5px);
+    justify-content:center;
+    min-height:34px;
+  }
+  .game-action-note {
+    display:none;
+  }
+  .game-action-feedback {
+    font-size:9px;
+  }
+}
