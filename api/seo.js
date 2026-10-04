@@ -440,6 +440,9 @@ export default async function handler(req, res) {
             : description,
           tags,
           related,
+          robots: tagTooThin
+            ? "noindex,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
+            : "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
         });
       }
     } else if (kind === "category" || kind === "tag") {
@@ -474,6 +477,7 @@ export default async function handler(req, res) {
           title: item.title,
           image: item.image,
         }));
+        const tagTooThin = kind === "tag" && Number(summary.count || 0) < 5;
         const schema = {
           "@context": "https://schema.org",
           "@graph": [
