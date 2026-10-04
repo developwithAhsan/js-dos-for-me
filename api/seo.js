@@ -184,13 +184,18 @@ function keywordListForGame(game) {
     title,
     `${title} online`,
     `play ${title}`,
+    `play ${title} online`,
     `${title} browser game`,
+    `${title} online game`,
+    `free ${title} game`,
+    `how to play ${title}`,
     `${categoryBase} games`,
-    ...tags,
+    `free ${categoryBase} games`,
+    ...tags.map((tag) => `${title} ${tag.toLowerCase()} game`),
     ...collections,
     "free online games",
     "browser games",
-  ])].slice(0, 18);
+  ])].slice(0, 24);
 }
 
 function keywordListForCollection(name, items = []) {
@@ -411,6 +416,8 @@ export default async function handler(req, res) {
               gamePlatform: "Web Browser",
               genre: [...new Set([categoryName, ...tags])],
               keywords: keywords.join(", "),
+              applicationCategory: "Game",
+              isAccessibleForFree: true,
               isPartOf: { "@id": `${origin}/#website` },
             },
             breadcrumbSchema(origin, [
