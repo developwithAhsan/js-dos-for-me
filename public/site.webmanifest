@@ -1,7 +1,7 @@
 {
   "id": "/playzone/",
-  "name": "PlayZone — Free Online Games",
-  "short_name": "PlayZone",
+  "name": "IOPlay — Free Online Games",
+  "short_name": "IOPlay",
   "description": "Play thousands of free browser games, multiplayer favorites and PC classics instantly.",
   "start_url": "/?launch=installed",
   "scope": "/",
