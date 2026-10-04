@@ -1,4 +1,4 @@
-const SITE_NAME = "PlayZone";
+const SITE_NAME = "IOPlay";
 
 const NATIVE = {
   "doom": {
@@ -106,7 +106,7 @@ function nativeTagSummary(slug) {
   return {
     slug,
     name,
-    description: `Play ${name} games online and discover related browser and classic PC games on PlayZone.`,
+    description: `Play ${name} games online and discover related browser and classic PC games on IOPlay.`,
     count: items.length,
     items,
   };
@@ -358,7 +358,7 @@ export default async function handler(req, res) {
         const description = truncate(
           game.description && cleanText(game.description).length > 35
             ? game.description
-            : `Play ${title} online in your browser. Discover ${categoryName.toLowerCase()} gameplay, controls and related games on PlayZone.`,
+            : `Play ${title} online in your browser. Discover ${categoryName.toLowerCase()} gameplay, controls and related games on IOPlay.`,
           165
         );
         const keywords = keywordListForGame(game);
@@ -456,7 +456,7 @@ export default async function handler(req, res) {
         const name = cleanText(summary.name || titleCase(slug));
         const canonical = `${origin}/${kind}/${slug}/`;
         const description = truncate(
-          summary.description || `Browse and play ${name} online in your browser on PlayZone.`,
+          summary.description || `Browse and play ${name} online in your browser on IOPlay.`,
           165
         );
         const keywords = keywordListForCollection(name, summary.items || []);
