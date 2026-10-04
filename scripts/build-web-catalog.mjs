@@ -454,8 +454,9 @@ function xmlEscape(value) {
 }
 
 function sitemapXml(urls) {
+  const lastmod = new Date().toISOString().slice(0, 10);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((url) =>
-    `  <url><loc>${xmlEscape(url)}</loc></url>`).join("\n")}\n</urlset>\n`;
+    `  <url><loc>${xmlEscape(url)}</loc><lastmod>${lastmod}</lastmod></url>`).join("\n")}\n</urlset>\n`;
 }
 
 const generatedDate = new Date().toISOString().slice(0, 10);
@@ -484,7 +485,7 @@ sitemapFiles.push("categories.xml");
 
 const tagUrls = [...new Set([
   ...nativeTagUrls.map((slug) => `${SITE}/tag/${slug}/`),
-  ...meta.tags.map((tag) => `${SITE}/tag/${tag.slug}/`),
+  ...meta.tags.filter((tag) => Number(tag.count || 0) >= 5).map((tag) => `${SITE}/tag/${tag.slug}/`),
 ])];
 await fs.writeFile(path.join(sitemapDir, "tags.xml"), sitemapXml(tagUrls));
 sitemapFiles.push("tags.xml");
