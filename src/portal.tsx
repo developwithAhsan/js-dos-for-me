@@ -66,11 +66,11 @@ function isStandaloneMode() {
     || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
 }
 
-async function requestPlayZoneInstall(startPath = "/") {
+async function requestIOPlayInstall(startPath = "/") {
   localStorage.setItem(INSTALL_START_KEY, startPath);
 
   if (isStandaloneMode()) {
-    return "PlayZone is installed. This game is set as your launch game.";
+    return "IOPlay is installed. This game is set as your launch game.";
   }
 
   if (deferredInstallPrompt) {
@@ -80,7 +80,7 @@ async function requestPlayZoneInstall(startPath = "/") {
     if (choice.outcome === "accepted") {
       deferredInstallPrompt = null;
       localStorage.setItem(INSTALL_DONE_KEY, "1");
-      return "PlayZone installed. This game is saved for quick launch.";
+      return "IOPlay installed. This game is saved for quick launch.";
     }
     return "Install was cancelled.";
   }
@@ -611,7 +611,7 @@ function Home({ query }: { query: string }) {
       if (active) setHome(data);
     });
     updateSeo(
-      "PlayZone — Free Online Games",
+      "IOPlay — Free Online Games",
       "Play browser games instantly across racing, shooting, action, adventure, multiplayer, arcade, puzzle, sports and classic PC categories.",
       "/"
     );
@@ -781,7 +781,7 @@ function GameTopActions({ slug, onFullscreen }: { slug: string; onFullscreen?: (
   };
 
   const install = async () => {
-    const result = await requestPlayZoneInstall(`/games/${slug}/`);
+    const result = await requestIOPlayInstall(`/games/${slug}/`);
     setMessage(result);
   };
 
@@ -802,12 +802,12 @@ function GameTopActions({ slug, onFullscreen }: { slug: string; onFullscreen?: (
 function SiteInstallButton({ compact = false }: { compact?: boolean }) {
   const [message, setMessage] = useState("");
   const install = async () => {
-    const result = await requestPlayZoneInstall("/");
+    const result = await requestIOPlayInstall("/");
     setMessage(result);
     if (compact && result) window.setTimeout(() => setMessage(""), 3500);
   };
   return <span class={compact ? "site-install-wrap compact" : "site-install-wrap"}>
-    <button class="site-install-button" onClick={install} title="Install PlayZone">
+    <button class="site-install-button" onClick={install} title="Install IOPlay">
       <span>⇩</span>{compact ? "" : "Install"}
     </button>
     {message && <span class="site-install-feedback">{message}</span>}
@@ -1215,7 +1215,7 @@ function WebGamePage({ slug }: { slug: string }) {
               <div class="browser-game-poster-shade">
                 <span class="browser-live-chip">Browser game</span>
                 <strong>{game.title}</strong>
-                <small>Loading game inside PlayZone…</small>
+                <small>Loading game inside IOPlay…</small>
               </div>
             </div>}
             <iframe
@@ -1324,7 +1324,7 @@ function RecentPage() {
   const [recent, setRecent] = useState<RecentGame[]>([]);
   useEffect(() => {
     setRecent(readRecentGames());
-    updateSeo("Recently Played Games — PlayZone", "Games recently played on this device.", "/recent/");
+    updateSeo("Recently Played Games — IOPlay", "Games recently played on this device.", "/recent/");
   }, []);
 
   const clearRecent = () => {
@@ -1368,7 +1368,7 @@ function FavoritesPage() {
   const [index, setIndex] = useState<WebIndexGame[]>([]);
   useEffect(() => {
     loadCatalogIndex().then(setIndex);
-    updateSeo("Favorite Games — PlayZone", "Your favorite browser games saved on this device.", "/favorites/");
+    updateSeo("Favorite Games — IOPlay", "Your favorite browser games saved on this device.", "/favorites/");
   }, []);
   const native = games.filter((game) => favorites.has(game.slug));
   const web = index.filter((game) => favorites.has(game.slug));
@@ -1456,7 +1456,7 @@ function App() {
       <div class="portal-shell screenshot-nav">
         <button class="hamburger-button" onClick={openCategories} aria-label="Browse categories" title="Browse categories">☰</button>
 
-        <button class="brand compact-brand" onClick={() => go("/")} aria-label="PlayZone home">
+        <button class="brand compact-brand" onClick={() => go("/")} aria-label="IOPlay home">
           <span class="brand-mark"><img src="/favicon.svg" alt="" /><span class="brand-pulse" /></span>
           <span class="brand-word"><strong>Play</strong><em>Zone</em></span>
         </button>
@@ -1475,7 +1475,7 @@ function App() {
             ref={searchRef}
             value={headerQuery}
             onInput={(e) => sendSearch((e.target as HTMLInputElement).value)}
-            placeholder="Search 38,000+ games"
+            placeholder="Search 38,000+ browser games"
             aria-label="Search games"
             autoComplete="off"
             spellcheck={false}
@@ -1498,17 +1498,17 @@ function App() {
       <button onClick={() => go("/")}><span>⌂</span><small>Home</small></button>
       <button onClick={openCategories}><span>▤</span><small>Categories</small></button>
       <button onClick={() => go("/favorites/")}><span>♡</span><small>Favorites</small></button>
-      <button onClick={() => requestPlayZoneInstall("/")}><span>⇩</span><small>Install</small></button>
+      <button onClick={() => requestIOPlayInstall("/")}><span>⇩</span><small>Install</small></button>
     </nav>
 
     <footer class="site-footer">
       <div class="portal-shell footer-main">
         <div class="footer-brand-column">
-          <button class="footer-brand" onClick={() => go("/")} aria-label="PlayZone home">
+          <button class="footer-brand" onClick={() => go("/")} aria-label="IOPlay home">
             <span class="brand-mark"><img src="/favicon.svg" alt="" /></span>
-            <span><strong>PlayZone</strong><small>Free online games</small></span>
+            <span><strong>IOPlay</strong><small>Free browser games</small></span>
           </button>
-          <p>Play thousands of free browser games, PC classics and browser-native favorites from one fast, mobile-friendly arcade.</p>
+          <p>Play free browser games, PC classics, IO games and multiplayer favorites in one fast, mobile-friendly gaming hub.</p>
           <div class="footer-badges">
             <span>38K+ Games</span>
             <span>Mobile Ready</span>
@@ -1539,13 +1539,13 @@ function App() {
           <button onClick={() => go("/recent/")}>Recently Played</button>
           <button onClick={() => searchRef.current?.focus()}>Search Games</button>
           <button onClick={openCategories}>Browse Categories</button>
-          <button onClick={() => requestPlayZoneInstall("/")}>Install PlayZone</button>
+          <button onClick={() => requestIOPlayInstall("/")}>Install IOPlay</button>
         </div>
       </div>
 
       <div class="footer-bottom">
         <div class="portal-shell footer-bottom-inner">
-          <span>© 2026 PlayZone</span>
+          <span>© 2026 IOPlay</span>
           <span>Browser Games · PC Classics · WebAssembly</span>
           <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Back to top ↑</button>
         </div>
