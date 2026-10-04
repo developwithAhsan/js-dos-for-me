@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const OUT = path.resolve("public/catalog");
-const SITE = "https://js-dos-for-me.vercel.app";
+const SITE = process.env.SITE_URL || "https://js-dos-for-me.vercel.app";
 const sources = [
   "https://gamemonetize.com/feed.json",
   "https://gamemonetize.com/feed.php?format=0&num=25000",
@@ -343,7 +343,7 @@ for (const category of categories.values()) {
     JSON.stringify({
       slug: category.slug,
       name: category.name,
-      description: `Play ${category.name} online in your browser. Discover popular titles, new releases and related games on PlayZone.`,
+      description: `Play ${category.name} online in your browser. Discover popular titles, new releases and related games on IOPlay.`,
       count: items.length,
       items: items.slice(0, 24),
     })
@@ -371,7 +371,7 @@ for (const tag of tags.values()) {
     JSON.stringify({
       slug: tag.slug,
       name: tag.name,
-      description: `Browse ${tag.name} games and play them online instantly on PlayZone.`,
+      description: `Browse ${tag.name} games and play them online instantly on IOPlay.`,
       count: items.length,
       items: items.slice(0, 24),
     })
